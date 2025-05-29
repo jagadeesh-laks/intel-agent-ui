@@ -1,14 +1,14 @@
 
 import React from 'react';
 import { AgentCard } from './AgentCard';
-import { Calculator, GanttChart, People, SprintBoard } from 'lucide-react';
+import { Calculator, GanttChart, Users, Kanban } from 'lucide-react';
 
 const agents = [
   {
     id: 'scrum-master',
     title: 'Scrum Master Bot',
     subtitle: 'Manage sprints via chat',
-    icon: SprintBoard,
+    icon: Kanban,
     status: 'not-configured' as const,
   },
   {
@@ -29,7 +29,7 @@ const agents = [
     id: 'hr',
     title: 'HR Bot',
     subtitle: 'Human resources assistance',
-    icon: People,
+    icon: Users,
     status: 'not-configured' as const,
   },
 ];

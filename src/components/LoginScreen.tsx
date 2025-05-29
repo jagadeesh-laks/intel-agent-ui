@@ -21,6 +21,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     onLogin();
   };
 
+  const handleRememberMeChange = (checked: boolean | "indeterminate") => {
+    setRememberMe(checked === true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4 transition-colors duration-300">
       <div className="absolute top-4 right-4">
@@ -67,7 +71,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               <Checkbox
                 id="remember"
                 checked={rememberMe}
-                onCheckedChange={setRememberMe}
+                onCheckedChange={handleRememberMeChange}
                 className="border-slate-300 dark:border-slate-600"
               />
               <Label htmlFor="remember" className="text-sm text-slate-600 dark:text-slate-400">
