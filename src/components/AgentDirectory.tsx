@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { AgentCard } from './AgentCard';
-import { Calculator, GanttChart, Users, Kanban } from 'lucide-react';
+import { Calculator, GanttChart, Users, Kanban, Sparkles } from 'lucide-react';
 
 const agents = [
   {
@@ -9,7 +9,7 @@ const agents = [
     title: 'Scrum Master Bot',
     subtitle: 'Manage sprints via chat',
     icon: Kanban,
-    status: 'configured' as const, // Changed to configured so it's accessible
+    status: 'configured' as const,
   },
   {
     id: 'project-manager',
@@ -40,16 +40,25 @@ interface AgentDirectoryProps {
 
 export const AgentDirectory: React.FC<AgentDirectoryProps> = ({ onAgentSelect }) => {
   return (
-    <div className="pt-20 min-h-screen gradient-bg transition-colors duration-300">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-12 text-center">
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent mb-4 float">
-            AI Agents Hub
-          </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+    <div className="pt-20 min-h-screen gradient-bg circuit-pattern transition-colors duration-300 relative">
+      {/* Floating orbs */}
+      <div className="floating-orb floating-orb-1"></div>
+      <div className="floating-orb floating-orb-2"></div>
+      <div className="floating-orb floating-orb-3"></div>
+
+      <div className="container mx-auto px-6 py-12 relative z-10">
+        <div className="mb-16 text-center">
+          <div className="inline-flex items-center gap-3 mb-6">
+            <Sparkles className="w-8 h-8 text-blue-400 icon-glow" />
+            <h2 className="text-6xl font-bold neon-text-blue float">
+              AI Agents Hub
+            </h2>
+            <Sparkles className="w-8 h-8 text-purple-400 icon-glow" />
+          </div>
+          <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
             Choose an AI agent to get started with your workflow automation
           </p>
-          <div className="w-24 h-1 bg-gradient-to-r from-teal-500 to-cyan-500 mx-auto mt-4 rounded-full pulse-glow"></div>
+          <div className="w-32 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto mt-6 rounded-full pulse-glow"></div>
         </div>
         
         {agents.length > 0 ? (
@@ -63,14 +72,14 @@ export const AgentDirectory: React.FC<AgentDirectoryProps> = ({ onAgentSelect })
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-full flex items-center justify-center card-3d float">
-              <span className="text-4xl">🤖</span>
+          <div className="text-center py-20">
+            <div className="w-40 h-40 mx-auto mb-8 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full flex items-center justify-center card-3d float neon-border">
+              <span className="text-6xl">🤖</span>
             </div>
-            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            <h3 className="text-2xl font-semibold text-white mb-4 neon-text">
               No agents available
             </h3>
-            <p className="text-slate-600 dark:text-slate-400">
+            <p className="text-slate-300 text-lg">
               Please contact your admin to set up AI agents for your organization.
             </p>
           </div>

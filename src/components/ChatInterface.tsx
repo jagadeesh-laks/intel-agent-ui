@@ -2,322 +2,348 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { IntegrationsPanel } from './IntegrationsPanel';
-import { Send, RotateCcw, Edit3, Zap } from 'lucide-react';
+import { 
+  Send, 
+  Settings, 
+  RefreshCw, 
+  MessageCircle, 
+  Zap,
+  Bot,
+  User,
+  Calendar,
+  BarChart3,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Slack,
+  Mail
+} from 'lucide-react';
 
-interface ChatMessage {
+interface Message {
   id: string;
   type: 'user' | 'agent';
   content: string;
   timestamp: Date;
-  metadata?: {
-    source?: 'slack' | 'teams';
-    hasChart?: boolean;
-    hasIssueCard?: boolean;
-    jiraKey?: string;
-    issueTitle?: string;
-    issueStatus?: string;
+  source?: 'slack' | 'teams';
+  hasChart?: boolean;
+  issueCard?: {
+    key: string;
+    title: string;
+    status: 'todo' | 'in-progress' | 'done';
   };
 }
 
 export const ChatInterface: React.FC = () => {
-  const [isConfigured, setIsConfigured] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [project, setProject] = useState('Demo Project');
-  const [board, setBoard] = useState('Sprint Board');
-  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
-  const [selectedProject, setSelectedProject] = useState('');
-  const [selectedBoard, setSelectedBoard] = useState('');
-  const [slackIntegration, setSlackIntegration] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      type: 'agent',
+      content: 'Hello! I\'m your Scrum Master Bot. I can help you manage sprints, track issues, and coordinate with your team. What would you like to do today?',
+      timestamp: new Date(),
+    }
+  ]);
+  const [newMessage, setNewMessage] = useState('');
+  const [project] = useState('Project Alpha');
+  const [board] = useState('Sprint Board 1');
+  const [postToSlack, setPostToSlack] = useState(false);
   const [emailAlerts, setEmailAlerts] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const quickActions = [
+    { label: 'Create Sprint', command: '/createsprint' },
+    { label: 'Sprint Status', command: '/sprintstatus' },
+    { label: 'Team Velocity', command: '/velocity' },
+    { label: 'Burndown Chart', command: '/burndown' }
+  ];
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+    if (!newMessage.trim()) return;
 
-    const newMessage: ChatMessage = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: inputValue,
+      content: newMessage,
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, newMessage]);
-    setInputValue('');
-    setShowCommandSuggestions(false);
+    setMessages(prev => [...prev, userMessage]);
 
-    // Simulate agent response with rich content
+    // Simulate agent response
     setTimeout(() => {
-      let agentContent = "I'll help you with that! Here's what I found:";
-      let metadata: any = {};
-
-      if (inputValue.toLowerCase().includes('sprint status') || inputValue.toLowerCase().includes('/sprintstatus')) {
-        agentContent = "Here's your current sprint status with burndown chart and active issues:";
-        metadata = { hasChart: true, hasIssueCard: true, jiraKey: 'PROJ-123', issueTitle: 'Implement user authentication', issueStatus: 'In Progress' };
-      } else if (inputValue.toLowerCase().includes('create sprint') || inputValue.toLowerCase().includes('/createsprint')) {
-        agentContent = "I'll create a new sprint for you. Here are the current backlog items ready for sprint planning:";
-        metadata = { hasIssueCard: true, jiraKey: 'PROJ-124', issueTitle: 'Add payment integration', issueStatus: 'Ready for Dev' };
-      }
-
-      const agentResponse: ChatMessage = {
+      const agentMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'agent',
-        content: agentContent,
+        content: 'I understand you want to ' + newMessage.toLowerCase() + '. Let me help you with that...',
         timestamp: new Date(),
-        metadata,
+        hasChart: newMessage.includes('chart') || newMessage.includes('velocity'),
+        issueCard: newMessage.includes('issue') ? {
+          key: 'PROJ-123',
+          title: 'Implement user authentication',
+          status: 'in-progress'
+        } : undefined
       };
-      setMessages(prev => [...prev, agentResponse]);
+      setMessages(prev => [...prev, agentMessage]);
     }, 1000);
+
+    setNewMessage('');
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputValue(value);
-    setShowCommandSuggestions(value.startsWith('/'));
+  const handleQuickAction = (command: string) => {
+    setNewMessage(command);
+    handleSendMessage();
   };
 
-  const quickActions = [
-    { label: "Create Sprint", command: "/createsprint" },
-    { label: "Sprint Status", command: "/sprintstatus" }, 
-    { label: "View Backlog", command: "/backlog" },
-    { label: "Generate Report", command: "/report" },
-    { label: "Sync Jira", command: "/sync" }
-  ];
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'todo': return 'bg-slate-600 text-slate-200';
+      case 'in-progress': return 'bg-blue-600 text-blue-200';
+      case 'done': return 'bg-green-600 text-green-200';
+      default: return 'bg-slate-600 text-slate-200';
+    }
+  };
 
-  const slashCommands = [
-    "/createsprint - Create a new sprint",
-    "/sprintstatus - Show current sprint status", 
-    "/backlog - View product backlog",
-    "/report - Generate sprint report",
-    "/sync - Sync with Jira"
-  ];
-
-  if (!isConfigured) {
-    return (
-      <div className="pt-20 min-h-screen gradient-bg transition-colors duration-300">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8 text-center">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-4 float">
-              🏃‍♂️ Scrum Master Bot
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 text-lg">
-              Configure your integrations to unlock the full power of AI-driven sprint management
-            </p>
-          </div>
-          
-          <IntegrationsPanel onConfigured={() => setIsConfigured(true)} />
-        </div>
-      </div>
-    );
-  }
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'todo': return <Clock className="w-3 h-3" />;
+      case 'in-progress': return <AlertTriangle className="w-3 h-3" />;
+      case 'done': return <CheckCircle className="w-3 h-3" />;
+      default: return <Clock className="w-3 h-3" />;
+    }
+  };
 
   return (
-    <div className="pt-20 min-h-screen gradient-bg transition-colors duration-300">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Enhanced Header */}
-        <div className="mb-8 p-6 glass-effect card-3d rounded-2xl border-0 shadow-2xl">
-          <div className="flex items-center justify-between mb-4">
-            <nav className="text-sm text-slate-600 dark:text-slate-400 flex items-center space-x-2">
-              <span className="hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer transition-colors">Home</span> 
-              <span>/</span> 
-              <span className="text-teal-600 dark:text-teal-400 font-semibold">Scrum Master Bot</span>
-            </nav>
-            <div className="flex items-center gap-3">
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 pulse-glow">
-                Connected ✅
-              </Badge>
-              <Button variant="outline" size="sm" className="btn-3d">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Sync
-              </Button>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6 text-sm">
-              <span className="text-slate-700 dark:text-slate-300 flex items-center">
-                Project: <strong className="ml-2 text-teal-600 dark:text-teal-400">{project}</strong>
-              </span>
-              <span className="text-slate-700 dark:text-slate-300 flex items-center">
-                Board: <strong className="ml-2 text-teal-600 dark:text-teal-400">{board}</strong>
-              </span>
-            </div>
-            <Button variant="ghost" size="sm" className="text-teal-600 dark:text-teal-400 btn-3d">
-              <Edit3 className="w-4 h-4 mr-1" />
-              Edit
-            </Button>
-          </div>
-        </div>
+    <div className="pt-20 min-h-screen gradient-bg circuit-pattern relative">
+      {/* Floating orbs */}
+      <div className="floating-orb floating-orb-1"></div>
+      <div className="floating-orb floating-orb-2"></div>
+      <div className="floating-orb floating-orb-3"></div>
 
-        {/* Enhanced Chat Container */}
-        <div className="glass-effect card-3d rounded-2xl border-0 shadow-2xl h-[700px] flex flex-col overflow-hidden">
-          {/* Messages */}
-          <div className="flex-1 p-6 overflow-y-auto chat-scrollbar space-y-6">
-            {messages.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-2xl flex items-center justify-center card-3d float">
-                  <span className="text-3xl">🏃‍♂️</span>
+      <div className="container mx-auto px-6 py-6 relative z-10">
+        {/* Header */}
+        <Card className="mb-6 glass-effect neon-border-blue">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg neon-glow">
+                  <Bot className="w-6 h-6 text-white icon-glow" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  Ready to manage your sprints!
-                </h3>
-                <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                  Ask me about sprints, backlogs, or type "/" for available commands.
-                </p>
+                <div>
+                  <CardTitle className="text-xl text-white neon-text-blue">Scrum Master Bot</CardTitle>
+                  <p className="text-slate-300">
+                    {project} • {board}
+                    <Button variant="ghost" size="sm" className="ml-2 p-1 h-6 text-slate-400 hover:text-white">
+                      <Settings className="w-3 h-3" />
+                    </Button>
+                  </p>
+                </div>
               </div>
-            ) : (
-              messages.map((message) => (
-                <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-2xl px-6 py-4 rounded-2xl chat-bubble ${
-                    message.type === 'user'
-                      ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white'
-                      : 'bg-white/80 dark:bg-slate-700/80 text-slate-900 dark:text-slate-100 glass-effect'
-                  }`}>
-                    {message.metadata?.source && (
-                      <Badge variant="outline" className="mb-2 text-xs">
-                        via {message.metadata.source}
-                      </Badge>
-                    )}
-                    <p className="leading-relaxed">{message.content}</p>
-                    <p className={`text-xs mt-2 ${
-                      message.type === 'user' ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'
-                    }`}>
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
-                    
-                    {message.metadata?.hasIssueCard && (
-                      <Card className="mt-4 card-3d border-0 glass-effect">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-sm text-teal-600 dark:text-teal-400">
-                              {message.metadata.jiraKey}
-                            </span>
-                            <Badge variant="outline" className="text-xs btn-3d">
-                              {message.metadata.issueStatus}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-sm font-medium">{message.metadata.issueTitle}</p>
-                          <div className="mt-3 flex items-center gap-2">
-                            <Checkbox 
-                              checked={slackIntegration}
-                              onCheckedChange={(checked) => setSlackIntegration(checked === true)}
-                              className="btn-3d"
-                            />
-                            <span className="text-xs text-slate-600 dark:text-slate-400">
-                              Also post to Slack/Teams
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                    
-                    {message.metadata?.hasChart && (
-                      <div className="mt-4 p-4 glass-effect rounded-xl border-0 card-3d">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 font-medium">
-                          Sprint Burndown Chart
-                        </p>
-                        <div className="h-32 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-xl flex items-center justify-center card-3d">
-                          <div className="text-center">
-                            <Zap className="w-8 h-8 text-teal-600 dark:text-teal-400 mx-auto mb-2" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                              Interactive Chart
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {message.type === 'agent' && (
-                      <div className="mt-4 flex items-center gap-4 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Checkbox 
-                            checked={emailAlerts}
-                            onCheckedChange={(checked) => setEmailAlerts(checked === true)}
-                            className="btn-3d"
-                          />
-                          <span className="text-slate-600 dark:text-slate-400">
-                            Send email summary
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Quick Actions */}
-          <div className="px-6 py-4 border-t border-slate-200/50 dark:border-slate-700/50">
-            <div className="flex flex-wrap gap-2 mb-4">
-              {quickActions.map((action, index) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setInputValue(action.command)}
-                  className="text-xs btn-3d hover:bg-teal-50 dark:hover:bg-teal-900/20"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {action.label}
+              <div className="flex items-center space-x-3">
+                <Badge className="bg-green-500/20 text-green-400 neon-border-cyan">
+                  <Zap className="w-3 h-3 mr-1" />
+                  Connected
+                </Badge>
+                <Button variant="ghost" size="sm" className="btn-3d neon-border">
+                  <RefreshCw className="w-4 h-4" />
                 </Button>
-              ))}
+              </div>
             </div>
-          </div>
+          </CardHeader>
+        </Card>
 
-          {/* Command Suggestions */}
-          {showCommandSuggestions && (
-            <div className="px-6 py-2 border-t border-slate-200/50 dark:border-slate-700/50 glass-effect">
-              <div className="space-y-1">
-                {slashCommands.map((command) => (
+        {/* Chat Interface */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Chat */}
+          <div className="lg:col-span-3">
+            <Card className="h-[600px] flex flex-col glass-effect neon-border">
+              {/* Messages */}
+              <div className="flex-1 p-6 overflow-y-auto chat-scrollbar space-y-4">
+                {messages.map((message) => (
                   <div
-                    key={command}
-                    className="text-xs text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer p-2 rounded hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
-                    onClick={() => {
-                      setInputValue(command.split(' - ')[0]);
-                      setShowCommandSuggestions(false);
-                    }}
+                    key={message.id}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    {command}
+                    <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
+                      <div className={`flex items-center gap-2 mb-2 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          message.type === 'user' 
+                            ? 'bg-gradient-to-br from-blue-500 to-cyan-500' 
+                            : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                        } neon-glow`}>
+                          {message.type === 'user' ? (
+                            <User className="w-4 h-4 text-white" />
+                          ) : (
+                            <Bot className="w-4 h-4 text-white" />
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {message.timestamp.toLocaleTimeString()}
+                        </span>
+                        {message.source && (
+                          <Badge variant="outline" className="text-xs neon-border-cyan">
+                            via {message.source}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className={`p-4 rounded-2xl chat-bubble ${
+                        message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-agent'
+                      }`}>
+                        <p className="text-white">{message.content}</p>
+                        
+                        {/* Issue Card */}
+                        {message.issueCard && (
+                          <Card className="mt-3 glass-effect neon-border-purple">
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-white">{message.issueCard.key}</p>
+                                  <p className="text-sm text-slate-300">{message.issueCard.title}</p>
+                                </div>
+                                <Badge className={`${getStatusColor(message.issueCard.status)} flex items-center gap-1`}>
+                                  {getStatusIcon(message.issueCard.status)}
+                                  {message.issueCard.status}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Chart */}
+                        {message.hasChart && (
+                          <Card className="mt-3 glass-effect neon-border-pink">
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <BarChart3 className="w-4 h-4 text-pink-400" />
+                                <span className="text-sm text-white">Sprint Velocity Chart</span>
+                              </div>
+                              <div className="h-32 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg flex items-center justify-center">
+                                <span className="text-slate-300">📊 Chart visualization would appear here</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                      
+                      {/* Agent response options */}
+                      {message.type === 'agent' && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <label className="flex items-center gap-2 text-sm text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={postToSlack}
+                              onChange={(e) => setPostToSlack(e.target.checked)}
+                              className="rounded"
+                            />
+                            <Slack className="w-3 h-3" />
+                            Post to Slack
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={emailAlerts}
+                              onChange={(e) => setEmailAlerts(e.target.checked)}
+                              className="rounded"
+                            />
+                            <Mail className="w-3 h-3" />
+                            Email alerts
+                          </label>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
-            </div>
-          )}
 
-          {/* Enhanced Input */}
-          <div className="p-6 border-t border-slate-200/50 dark:border-slate-700/50">
-            <div className="flex gap-3">
-              <Input
-                value={inputValue}
-                onChange={handleInputChange}
-                placeholder="Ask about your sprint… (or type '/' for commands)"
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1 h-12 border-slate-200 dark:border-slate-600 btn-3d text-base"
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
-                className="h-12 px-6 btn-3d bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white"
-              >
-                <Send className="w-5 h-5" />
-              </Button>
-            </div>
+              {/* Input Area */}
+              <div className="p-6 border-t border-slate-700">
+                <div className="flex gap-3">
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Ask about your sprint… (or type / for commands)"
+                    className="input-neon text-white placeholder-slate-400"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  />
+                  <Button 
+                    onClick={handleSendMessage}
+                    className="btn-3d bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 neon-glow"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                {/* Quick Actions */}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {quickActions.map((action) => (
+                    <Button
+                      key={action.command}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickAction(action.command)}
+                      className="btn-3d neon-border text-slate-300 hover:text-white text-xs"
+                    >
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Quick Stats Sidebar */}
+          <div className="space-y-4">
+            <Card className="glass-effect neon-border-purple">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-purple-400 icon-glow" />
+                  Sprint Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-300">Days remaining</span>
+                  <span className="text-white font-medium">5</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-300">Issues completed</span>
+                  <span className="text-green-400 font-medium">8/12</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-300">Story points</span>
+                  <span className="text-blue-400 font-medium">34/50</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect neon-border-cyan">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg text-white flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-cyan-400 icon-glow" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm">
+                  <p className="text-slate-300">John moved PROJ-123 to Done</p>
+                  <span className="text-xs text-slate-500">2 minutes ago</span>
+                </div>
+                <div className="text-sm">
+                  <p className="text-slate-300">Sarah added a comment</p>
+                  <span className="text-xs text-slate-500">1 hour ago</span>
+                </div>
+                <div className="text-sm">
+                  <p className="text-slate-300">Sprint planning completed</p>
+                  <span className="text-xs text-slate-500">Yesterday</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

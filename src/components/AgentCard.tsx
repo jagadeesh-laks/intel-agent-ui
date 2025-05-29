@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, MessageCircle, Zap } from 'lucide-react';
 
 interface AgentCardProps {
   id: string;
@@ -23,34 +23,52 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   onChatClick,
 }) => {
   const isConfigured = status === 'configured';
+  const neonClass = id === 'scrum-master' ? 'neon-border-blue' : 
+                   id === 'project-manager' ? 'neon-border-purple' : 
+                   id === 'accountant' ? 'neon-border-pink' : 'neon-border-cyan';
+  
+  const glowClass = id === 'scrum-master' ? 'neon-glow' : 
+                   id === 'project-manager' ? 'neon-glow-purple' : 
+                   id === 'accountant' ? 'neon-glow-pink' : 'neon-glow-cyan';
 
   return (
-    <Card className="card-3d group bg-white/70 dark:bg-slate-800/70 glass-effect border-0 overflow-hidden">
-      <CardHeader className="pb-3 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-        <div className="flex items-start justify-between relative z-10">
-          <div className="p-4 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/50 dark:to-cyan-900/50 rounded-2xl card-3d group-hover:spin-slow">
-            <Icon className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+    <Card className={`card-3d group glass-effect border-0 overflow-hidden ${neonClass} relative`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+      
+      <CardHeader className="pb-4 relative z-10">
+        <div className="flex items-start justify-between">
+          <div className={`p-5 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl card-3d group-hover:scale-110 transition-all duration-500 ${neonClass} relative overflow-hidden`}>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <Icon className="w-10 h-10 text-blue-400 icon-glow relative z-10" />
           </div>
           <Badge 
             variant={isConfigured ? "default" : "outline"}
-            className={`btn-3d ${
+            className={`btn-3d text-xs font-semibold px-3 py-1 ${
               isConfigured 
-                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 pulse-glow" 
-                : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 neon-border-cyan border-green-500/30" 
+                : "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 neon-border-pink border-amber-500/30"
             }`}
           >
-            {isConfigured ? "Ready ✅" : "Setup needed ⚠️"}
+            {isConfigured ? (
+              <span className="flex items-center gap-1">
+                <Zap className="w-3 h-3" />
+                Ready
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                ⚠️ Setup needed
+              </span>
+            )}
           </Badge>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-6 relative z-10">
         <div>
-          <h3 className="font-bold text-xl text-slate-900 dark:text-slate-100 mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors duration-300">
+          <h3 className="font-bold text-2xl text-white mb-3 group-hover:neon-text-blue transition-all duration-300">
             {title}
           </h3>
-          <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+          <p className="text-slate-300 leading-relaxed text-base">
             {subtitle}
           </p>
         </div>
@@ -58,14 +76,14 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         <Button
           onClick={() => onChatClick(id)}
           disabled={!isConfigured}
-          className={`w-full btn-3d transition-all duration-500 ${
+          className={`w-full btn-3d h-12 transition-all duration-500 text-lg font-semibold ${
             isConfigured
-              ? "bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-2xl"
-              : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+              ? `bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white ${glowClass}`
+              : "bg-gradient-to-r from-slate-700 to-slate-800 text-slate-400 cursor-not-allowed border-slate-600"
           }`}
         >
-          <span className="mr-2 text-lg">💬</span>
-          <span className="font-semibold">Start Chat</span>
+          <MessageCircle className="w-5 h-5 mr-2" />
+          <span>Start Chat</span>
         </Button>
       </CardContent>
     </Card>
