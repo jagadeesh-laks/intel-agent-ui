@@ -9,7 +9,7 @@ const agents = [
     title: 'Scrum Master Bot',
     subtitle: 'Manage sprints via chat',
     icon: Kanban,
-    status: 'not-configured' as const,
+    status: 'configured' as const, // Changed to configured so it's accessible
   },
   {
     id: 'project-manager',
@@ -40,19 +40,20 @@ interface AgentDirectoryProps {
 
 export const AgentDirectory: React.FC<AgentDirectoryProps> = ({ onAgentSelect }) => {
   return (
-    <div className="pt-20 min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+    <div className="pt-20 min-h-screen gradient-bg transition-colors duration-300">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-            Agent Directory
+        <div className="mb-12 text-center">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent mb-4 float">
+            AI Agents Hub
           </h2>
-          <p className="text-slate-600 dark:text-slate-400">
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
             Choose an AI agent to get started with your workflow automation
           </p>
+          <div className="w-24 h-1 bg-gradient-to-r from-teal-500 to-cyan-500 mx-auto mt-4 rounded-full pulse-glow"></div>
         </div>
         
         {agents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {agents.map((agent) => (
               <AgentCard
                 key={agent.id}
@@ -63,7 +64,7 @@ export const AgentDirectory: React.FC<AgentDirectoryProps> = ({ onAgentSelect })
           </div>
         ) : (
           <div className="text-center py-16">
-            <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-full flex items-center justify-center">
+            <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-full flex items-center justify-center card-3d float">
               <span className="text-4xl">🤖</span>
             </div>
             <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">

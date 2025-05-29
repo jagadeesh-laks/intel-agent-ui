@@ -11,13 +11,15 @@ export const ThemeToggle: React.FC = () => {
       variant="ghost"
       size="sm"
       onClick={toggleTheme}
-      className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all duration-300"
+      className="w-12 h-12 rounded-full glass-effect hover:bg-white/20 transition-all duration-300 btn-3d"
     >
-      {theme === 'light' ? (
-        <span className="text-lg">🌙</span>
-      ) : (
-        <span className="text-lg">☀️</span>
-      )}
+      <div className="text-2xl transition-transform duration-500 hover:scale-110">
+        {theme === 'light' ? (
+          <span>🌙</span>
+        ) : (
+          <span>☀️</span>
+        )}
+      </div>
     </Button>
   );
 };
