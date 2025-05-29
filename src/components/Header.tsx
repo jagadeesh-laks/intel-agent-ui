@@ -18,15 +18,15 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onLogout, onHome, showHomeButton = false }) => {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-morphism neon-border-green transition-all duration-300">
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-pink-500/10"></div>
+    <header className="fixed top-0 left-0 right-0 z-50 glass-morphism professional-border transition-all duration-300">
+      <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 dark:from-black/5 dark:via-black/10 dark:to-black/5"></div>
       <div className="container mx-auto px-6 h-16 flex items-center justify-between relative z-10">
         <div className="flex items-center space-x-6">
           {showHomeButton && onHome && (
             <Button
               onClick={onHome}
               variant="ghost"
-              className="btn-3d neon-border-blue text-white hover:neon-glow-blue"
+              className="btn-3d professional-border text-white dark:text-black"
             >
               <Home className="w-5 h-5 mr-2" />
               Home
@@ -34,10 +34,10 @@ export const Header: React.FC<HeaderProps> = ({ onLogout, onHome, showHomeButton
           )}
           
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 via-blue-500 to-pink-500 rounded-xl flex items-center justify-center card-3d neon-glow-green pulse-neon">
-              <Bot className="text-white font-bold text-xl w-6 h-6 icon-glow" />
+            <div className="w-12 h-12 bg-gradient-to-br from-gray-800 to-black dark:from-gray-200 dark:to-white rounded-xl flex items-center justify-center card-3d pulse-modern comic-edges">
+              <Bot className="text-white dark:text-black font-bold text-xl w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold text-white neon-text-green">AI Agents Hub</h1>
+            <h1 className="text-2xl font-bold modern-text">AI Agents Hub</h1>
           </div>
         </div>
         
@@ -45,16 +45,16 @@ export const Header: React.FC<HeaderProps> = ({ onLogout, onHome, showHomeButton
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-12 h-12 rounded-full glass-morphism neon-border-blue btn-3d p-0">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <User className="text-white font-bold text-lg w-5 h-5" />
+              <Button variant="ghost" className="w-12 h-12 rounded-full glass-morphism professional-border btn-3d p-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-300 dark:to-gray-100 rounded-full flex items-center justify-center">
+                  <User className="text-white dark:text-black font-bold text-lg w-5 h-5" />
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 glass-morphism border-0 neon-border-green">
+            <DropdownMenuContent align="end" className="w-48 glass-morphism border-0 professional-border">
               <DropdownMenuItem 
                 onClick={onLogout} 
-                className="text-red-400 hover:bg-red-500/20 btn-3d flex items-center gap-2 neon-text-orange hover:neon-text-yellow"
+                className="text-red-400 dark:text-red-600 hover:bg-red-500/20 btn-3d flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out

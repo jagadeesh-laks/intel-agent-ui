@@ -21,49 +21,35 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   subtitle,
   icon: Icon,
   status,
-  neonColor,
   onChatClick,
 }) => {
   const isConfigured = status === 'configured';
-  
-  const getNeonClasses = (color: string) => {
-    switch (color) {
-      case 'green': return { border: 'neon-border-green', glow: 'neon-glow-green', text: 'neon-text-green' };
-      case 'blue': return { border: 'neon-border-blue', glow: 'neon-glow-blue', text: 'neon-text-blue' };
-      case 'pink': return { border: 'neon-border-pink', glow: 'neon-glow-pink', text: 'neon-text-pink' };
-      case 'orange': return { border: 'neon-border-orange', glow: 'neon-glow-orange', text: 'neon-text-orange' };
-      case 'yellow': return { border: 'neon-border-yellow', glow: 'neon-glow-yellow', text: 'neon-text-yellow' };
-      default: return { border: 'neon-border-green', glow: 'neon-glow-green', text: 'neon-text-green' };
-    }
-  };
-
-  const neonClasses = getNeonClasses(neonColor);
 
   return (
-    <Card className={`card-3d group glass-morphism border-0 overflow-hidden ${neonClasses.border} relative h-full`}>
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+    <Card className="card-3d group glass-morphism border-0 overflow-hidden professional-border comic-edges relative h-full">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/2 via-transparent to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
       
       {/* Comic-style robot edges */}
-      <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-current opacity-30"></div>
-      <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-current opacity-30"></div>
+      <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-white/30 dark:border-black/30"></div>
+      <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-white/30 dark:border-black/30"></div>
       
       <CardHeader className="pb-4 relative z-10">
         <div className="flex items-start justify-between">
-          <div className={`p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/80 rounded-3xl card-3d group-hover:scale-110 transition-all duration-500 ${neonClasses.border} relative overflow-hidden backdrop-blur-sm`}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <Icon className={`w-12 h-12 ${neonClasses.text} icon-glow relative z-10`} />
+          <div className="p-6 bg-gradient-to-br from-gray-900/80 to-black/80 dark:from-gray-100/80 dark:to-white/80 rounded-3xl card-3d group-hover:scale-110 transition-all duration-500 professional-border relative overflow-hidden backdrop-blur-sm comic-edges">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <Icon className="w-12 h-12 text-white dark:text-black relative z-10" />
             
             {/* Robot-style decorative elements */}
-            <div className="absolute top-1 left-1 w-2 h-2 bg-current opacity-20 rounded-full"></div>
-            <div className="absolute bottom-1 right-1 w-1 h-1 bg-current opacity-40 rounded-full"></div>
+            <div className="absolute top-1 left-1 w-2 h-2 bg-white/20 dark:bg-black/20 rounded-full"></div>
+            <div className="absolute bottom-1 right-1 w-1 h-1 bg-white/40 dark:bg-black/40 rounded-full"></div>
           </div>
           
           <Badge 
             variant={isConfigured ? "default" : "outline"}
             className={`btn-3d text-xs font-semibold px-4 py-2 ${
               isConfigured 
-                ? "bg-gradient-to-r from-green-500/30 to-emerald-500/30 text-green-400 neon-border-green border-green-500/50 neon-glow-green" 
-                : "bg-gradient-to-r from-orange-500/30 to-yellow-500/30 text-orange-400 neon-border-orange border-orange-500/50"
+                ? "bg-gradient-to-r from-gray-800/30 to-black/30 dark:from-gray-200/30 dark:to-white/30 text-white dark:text-black professional-border" 
+                : "bg-gradient-to-r from-gray-600/30 to-gray-800/30 dark:from-gray-400/30 dark:to-gray-600/30 text-gray-300 dark:text-gray-700 professional-border"
             }`}
           >
             {isConfigured ? (
@@ -82,10 +68,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       
       <CardContent className="space-y-6 relative z-10">
         <div>
-          <h3 className={`font-bold text-2xl text-white mb-3 group-hover:${neonClasses.text} transition-all duration-300`}>
+          <h3 className="font-bold text-2xl text-white dark:text-black mb-3 group-hover:text-slate-300 dark:group-hover:text-slate-700 transition-all duration-300">
             {title}
           </h3>
-          <p className="text-slate-300 leading-relaxed text-base">
+          <p className="text-slate-300 dark:text-slate-700 leading-relaxed text-base">
             {subtitle}
           </p>
         </div>
@@ -95,8 +81,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           disabled={!isConfigured}
           className={`w-full btn-3d h-14 transition-all duration-500 text-lg font-semibold ${
             isConfigured
-              ? `bg-gradient-to-r from-${neonColor}-500 via-blue-500 to-pink-500 hover:from-${neonColor}-400 hover:via-blue-400 hover:to-pink-400 text-white ${neonClasses.glow}`
-              : "bg-gradient-to-r from-slate-700 to-slate-800 text-slate-400 cursor-not-allowed border-slate-600"
+              ? "bg-gradient-to-r from-gray-900 to-black dark:from-gray-100 dark:to-white text-white dark:text-black"
+              : "bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-300 dark:to-gray-400 text-slate-400 dark:text-slate-600 cursor-not-allowed"
           }`}
         >
           <MessageCircle className="w-5 h-5 mr-3" />

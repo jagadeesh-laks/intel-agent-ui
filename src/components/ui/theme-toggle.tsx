@@ -12,13 +12,13 @@ export const ThemeToggle: React.FC = () => {
       variant="ghost"
       size="sm"
       onClick={toggleTheme}
-      className="w-12 h-12 rounded-full glass-effect neon-border btn-3d p-0"
+      className="w-12 h-12 rounded-full glass-morphism professional-border btn-3d p-0"
     >
-      <div className="text-2xl transition-transform duration-500 hover:scale-110 icon-glow">
+      <div className="text-2xl transition-transform duration-500 hover:scale-110">
         {theme === 'light' ? (
-          <Moon className="w-5 h-5 text-blue-400" />
+          <Moon className="w-5 h-5 text-white" />
         ) : (
-          <Sun className="w-5 h-5 text-yellow-400" />
+          <Sun className="w-5 h-5 text-black" />
         )}
       </div>
     </Button>
