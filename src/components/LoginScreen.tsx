@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Bot, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Bot, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -28,33 +28,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen gradient-bg circuit-pattern flex items-center justify-center p-4 transition-colors duration-300 relative overflow-hidden">
-      {/* Floating orbs */}
-      <div className="floating-orb floating-orb-1"></div>
-      <div className="floating-orb floating-orb-2"></div>
-      <div className="floating-orb floating-orb-3"></div>
+    <div className="min-h-screen animated-bg flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Floating Elements */}
+      <div className="absolute top-10 left-10 w-20 h-20 rounded-full bg-gradient-to-r from-green-500/20 to-blue-500/20 blur-xl float"></div>
+      <div className="absolute top-1/3 right-10 w-32 h-32 rounded-full bg-gradient-to-r from-pink-500/20 to-orange-500/20 blur-xl float" style={{animationDelay: '2s'}}></div>
+      <div className="absolute bottom-20 left-1/4 w-16 h-16 rounded-full bg-gradient-to-r from-yellow-500/20 to-green-500/20 blur-xl float" style={{animationDelay: '4s'}}></div>
 
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
       
-      <Card className="w-full max-w-md card-3d glass-effect border-0 relative z-10 neon-border">
+      <Card className="w-full max-w-md card-3d glass-morphism border-0 relative z-10 neon-border-green">
         <CardHeader className="text-center space-y-6 pb-8">
-          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center card-3d float neon-glow pulse-glow">
-            <Bot className="w-12 h-12 text-white icon-glow" />
+          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-green-500 via-blue-500 to-pink-500 rounded-2xl flex items-center justify-center card-3d neon-glow-green pulse-neon">
+            <Bot className="w-10 h-10 text-white icon-glow" />
           </div>
-          <CardTitle className="text-5xl font-bold neon-text-blue mb-2">
-            AI Agents Hub
-          </CardTitle>
-          <p className="text-slate-300 text-lg">Welcome to Sign In Buddy!</p>
+          <div>
+            <CardTitle className="text-4xl font-bold neon-text-green mb-2 flex items-center justify-center gap-2">
+              <Sparkles className="w-8 h-8 neon-text-yellow icon-glow" />
+              AI Agents Hub
+              <Sparkles className="w-8 h-8 neon-text-yellow icon-glow" />
+            </CardTitle>
+            <p className="text-slate-300 text-lg">Welcome to the Future of AI</p>
+          </div>
         </CardHeader>
         
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-3">
-              <Label htmlFor="email" className="text-slate-200 font-medium flex items-center gap-2">
-                <Mail className="w-4 h-4 icon-glow" />
-                Enter your email
+              <Label htmlFor="email" className="text-white font-medium flex items-center gap-2">
+                <Mail className="w-4 h-4 icon-glow neon-text-blue" />
+                Email Address
               </Label>
               <Input
                 id="email"
@@ -68,9 +72,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </div>
             
             <div className="space-y-3">
-              <Label htmlFor="password" className="text-slate-200 font-medium flex items-center gap-2">
-                <Lock className="w-4 h-4 icon-glow" />
-                Enter your password
+              <Label htmlFor="password" className="text-white font-medium flex items-center gap-2">
+                <Lock className="w-4 h-4 icon-glow neon-text-pink" />
+                Password
               </Label>
               <div className="relative">
                 <Input
@@ -98,22 +102,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   id="remember"
                   checked={rememberMe}
                   onCheckedChange={handleRememberMeChange}
-                  className="border-slate-400 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 neon-border"
+                  className="border-slate-400 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 neon-border-green"
                 />
                 <Label htmlFor="remember" className="text-sm text-slate-300">
                   Remember Me
                 </Label>
               </div>
-              <button type="button" className="text-sm text-blue-400 hover:text-blue-300 transition-colors neon-text">
+              <button type="button" className="text-sm neon-text-blue hover:neon-text-green transition-colors">
                 Forgot Password?
               </button>
             </div>
             
             <Button
               type="submit"
-              className="w-full btn-3d h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white neon-glow transition-all duration-500"
+              className="w-full btn-3d h-14 text-lg font-semibold bg-gradient-to-r from-green-500 via-blue-500 to-pink-500 hover:from-green-400 hover:via-blue-400 hover:to-pink-400 text-white neon-glow-green transition-all duration-500"
             >
-              Sign In
+              Sign In to AI Hub
             </Button>
 
             <div className="text-center text-slate-400">
@@ -122,16 +126,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <Button
                   type="button"
                   variant="outline"
-                  className="btn-3d neon-border-cyan text-slate-200 hover:text-white"
+                  className="btn-3d neon-border-blue text-slate-200 hover:text-white hover:neon-glow-blue"
                 >
                   Google
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  className="btn-3d neon-border-purple text-slate-200 hover:text-white"
+                  className="btn-3d neon-border-pink text-slate-200 hover:text-white hover:neon-glow-pink"
                 >
-                  Facebook
+                  Microsoft
                 </Button>
               </div>
             </div>
@@ -139,8 +143,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="text-center">
               <p className="text-sm text-slate-400">
                 Don't have an account?{' '}
-                <button type="button" className="text-blue-400 hover:text-blue-300 transition-colors neon-text">
-                  Sign up
+                <button type="button" className="neon-text-orange hover:neon-text-yellow transition-colors">
+                  Create Account
                 </button>
               </p>
             </div>

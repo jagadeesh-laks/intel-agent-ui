@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -9,7 +8,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LoginScreen } from '@/components/LoginScreen';
 import { Header } from '@/components/Header';
 import { AgentDirectory } from '@/components/AgentDirectory';
-import { ChatInterface } from '@/components/ChatInterface';
+import { ScrumMasterPage } from '@/components/ScrumMasterPage';
 
 const queryClient = new QueryClient();
 
@@ -54,18 +53,23 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-            <Header onLogout={handleLogout} />
+          <div className="min-h-screen transition-colors duration-300">
+            <Header 
+              onLogout={handleLogout} 
+              onHome={handleBackToDirectory}
+              showHomeButton={!!selectedAgent}
+            />
             
-            {selectedAgent ? (
-              <div>
-                <button
-                  onClick={handleBackToDirectory}
-                  className="fixed top-20 left-4 z-40 px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                >
-                  ← Back to Directory
-                </button>
-                <ChatInterface />
+            {selectedAgent === 'scrum-master' ? (
+              <ScrumMasterPage onBack={handleBackToDirectory} />
+            ) : selectedAgent ? (
+              <div className="pt-20 min-h-screen animated-bg flex items-center justify-center">
+                <div className="text-center">
+                  <h2 className="text-3xl font-bold text-white neon-text-blue mb-4">
+                    {selectedAgent.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} Bot
+                  </h2>
+                  <p className="text-slate-300 mb-8">This agent is under development</p>
+                </div>
               </div>
             ) : (
               <AgentDirectory onAgentSelect={handleAgentSelect} />
