@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,9 @@ import {
   Activity,
   CheckCircle,
   AlertTriangle,
-  Clock
+  Clock,
+  Link,
+  Check
 } from 'lucide-react';
 
 interface ScrumMasterPageProps {
@@ -28,15 +29,30 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedBoard, setSelectedBoard] = useState('');
   const [message, setMessage] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [managementTool, setManagementTool] = useState('');
-  const [communicationTool, setCommunicationTool] = useState('');
-  const [emailTool, setEmailTool] = useState('');
-  const [aiEngine, setAiEngine] = useState('');
   const [showSettings, setShowSettings] = useState(false);
 
+  // Management tool states
+  const [managementTool, setManagementTool] = useState('');
+  const [managementCredentials, setManagementCredentials] = useState('');
+  const [managementConnected, setManagementConnected] = useState(false);
+
+  // Communication tool states (optional)
+  const [communicationTool, setCommunicationTool] = useState('');
+  const [communicationCredentials, setCommunicationCredentials] = useState('');
+  const [communicationConnected, setCommunicationConnected] = useState(false);
+
+  // Email tool states (optional)
+  const [emailTool, setEmailTool] = useState('');
+  const [emailCredentials, setEmailCredentials] = useState('');
+  const [emailConnected, setEmailConnected] = useState(false);
+
+  // AI Engine states
+  const [aiEngine, setAiEngine] = useState('');
+  const [aiCredentials, setAiCredentials] = useState('');
+  const [aiConnected, setAiConnected] = useState(false);
+
   const handleConfigure = () => {
-    if (managementTool && aiEngine && apiKey) {
+    if (managementTool && managementConnected && aiEngine && aiConnected) {
       setIsConfigured(true);
       setShowSettings(false);
     }
@@ -48,8 +64,39 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
     }
   };
 
+  const handleManagementConnect = () => {
+    if (managementCredentials.trim()) {
+      setManagementConnected(true);
+    }
+  };
+
+  const handleCommunicationConnect = () => {
+    if (communicationCredentials.trim()) {
+      setCommunicationConnected(true);
+    }
+  };
+
+  const handleEmailConnect = () => {
+    if (emailCredentials.trim()) {
+      setEmailConnected(true);
+    }
+  };
+
+  const handleAiConnect = () => {
+    if (aiCredentials.trim()) {
+      setAiConnected(true);
+    }
+  };
+
   const projects = ['Project Alpha', 'Project Beta', 'Project Gamma'];
   const boards = ['Sprint Board 1', 'Sprint Board 2', 'Kanban Board'];
+
+  const getStatusColor = () => {
+    if (isConfigured) {
+      return "bg-green-100/20 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200/30 dark:border-green-800/30";
+    }
+    return "bg-purple-100/20 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200/30 dark:border-purple-800/30";
+  };
 
   return (
     <div className="pt-20 min-h-screen animated-bg relative overflow-hidden">
@@ -77,12 +124,12 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                 <Button
                   onClick={() => setShowSettings(!showSettings)}
                   variant="outline"
-                  className="btn-3d professional-border text-white dark:text-black"
+                  className="btn-3d professional-border text-white dark:text-black hover:text-white dark:hover:text-black"
                 >
                   <Settings className="w-4 h-4 mr-2" />
-                  Settings
+                  <span className="opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">Settings</span>
                 </Button>
-                <Badge className={`btn-3d ${isConfigured ? 'bg-gray-800/20 dark:bg-gray-200/20 text-white dark:text-black professional-border' : 'bg-gray-600/20 text-gray-400 dark:text-gray-600 professional-border'}`}>
+                <Badge className={`btn-3d ${getStatusColor()}`}>
                   <Zap className="w-3 h-3 mr-1" />
                   {isConfigured ? 'Connected' : 'Setup Required'}
                 </Badge>
@@ -103,84 +150,204 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Management Tools */}
+                  {/* Management Tools - Required */}
                   <div>
-                    <Label className="text-white dark:text-black mb-3 block">Management Tool</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <Label className="text-white dark:text-black mb-3 block font-semibold">Management Tool *</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
                       {['Jira', 'Azure', 'Trello', 'GitHub'].map((tool) => (
                         <Button
                           key={tool}
                           variant={managementTool === tool ? 'default' : 'outline'}
                           onClick={() => setManagementTool(tool)}
-                          className={`btn-3d text-sm ${managementTool === tool ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black' : 'professional-border'}`}
+                          className={`btn-3d text-sm group relative ${
+                            managementTool === tool 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
                         >
-                          {tool}
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">{tool}</span>
+                          <span className={managementTool === tool ? 'opacity-100' : 'opacity-0 group-hover:opacity-0'}>{tool}</span>
                         </Button>
                       ))}
                     </div>
+                    {managementTool && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${managementTool} API Key/Token`}
+                          type="password"
+                          value={managementCredentials}
+                          onChange={(e) => setManagementCredentials(e.target.value)}
+                          className="input-modern"
+                          disabled={managementConnected}
+                        />
+                        <Button
+                          onClick={handleManagementConnect}
+                          disabled={!managementCredentials.trim() || managementConnected}
+                          className={`w-full btn-3d text-sm ${
+                            managementConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {managementConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Communication Tools */}
+                  {/* Communication Tools - Optional */}
                   <div>
-                    <Label className="text-white dark:text-black mb-3 block">Communication</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <Label className="text-white dark:text-black mb-3 block">Communication Tool (Optional)</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
                       {['Slack', 'Teams'].map((tool) => (
                         <Button
                           key={tool}
                           variant={communicationTool === tool ? 'default' : 'outline'}
                           onClick={() => setCommunicationTool(tool)}
-                          className={`btn-3d text-sm ${communicationTool === tool ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black' : 'professional-border'}`}
+                          className={`btn-3d text-sm group relative ${
+                            communicationTool === tool 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
                         >
-                          {tool}
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">{tool}</span>
+                          <span className={communicationTool === tool ? 'opacity-100' : 'opacity-0 group-hover:opacity-0'}>{tool}</span>
                         </Button>
                       ))}
                     </div>
+                    {communicationTool && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${communicationTool} Webhook URL`}
+                          value={communicationCredentials}
+                          onChange={(e) => setCommunicationCredentials(e.target.value)}
+                          className="input-modern"
+                          disabled={communicationConnected}
+                        />
+                        <Button
+                          onClick={handleCommunicationConnect}
+                          disabled={!communicationCredentials.trim() || communicationConnected}
+                          className={`w-full btn-3d text-sm ${
+                            communicationConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {communicationConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Email Integration */}
+                  {/* Email Integration - Optional */}
                   <div>
-                    <Label className="text-white dark:text-black mb-3 block">Email Integration</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <Label className="text-white dark:text-black mb-3 block">Email Integration (Optional)</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
                       {['Gmail', 'Office365'].map((tool) => (
                         <Button
                           key={tool}
                           variant={emailTool === tool ? 'default' : 'outline'}
                           onClick={() => setEmailTool(tool)}
-                          className={`btn-3d text-sm ${emailTool === tool ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black' : 'professional-border'}`}
+                          className={`btn-3d text-sm group relative ${
+                            emailTool === tool 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
                         >
-                          {tool}
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">{tool}</span>
+                          <span className={emailTool === tool ? 'opacity-100' : 'opacity-0 group-hover:opacity-0'}>{tool}</span>
                         </Button>
                       ))}
                     </div>
+                    {emailTool && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${emailTool} OAuth Token`}
+                          type="password"
+                          value={emailCredentials}
+                          onChange={(e) => setEmailCredentials(e.target.value)}
+                          className="input-modern"
+                          disabled={emailConnected}
+                        />
+                        <Button
+                          onClick={handleEmailConnect}
+                          disabled={!emailCredentials.trim() || emailConnected}
+                          className={`w-full btn-3d text-sm ${
+                            emailConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {emailConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* AI Engine */}
+                  {/* AI Engine - Required */}
                   <div>
-                    <Label className="text-white dark:text-black mb-3 block">AI Engine</Label>
+                    <Label className="text-white dark:text-black mb-3 block font-semibold">AI Engine *</Label>
                     <div className="grid grid-cols-2 gap-2 mb-3">
-                      {['ChatGPT', 'Gemini', 'DeepSeek', 'Meta'].map((engine) => (
+                      {['ChatGPT', 'Gemini', 'Ollama', 'Meta'].map((engine) => (
                         <Button
                           key={engine}
                           variant={aiEngine === engine ? 'default' : 'outline'}
                           onClick={() => setAiEngine(engine)}
-                          className={`btn-3d text-xs ${aiEngine === engine ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black' : 'professional-border'}`}
+                          className={`btn-3d text-xs group relative ${
+                            aiEngine === engine 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
                         >
-                          {engine}
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">{engine}</span>
+                          <span className={aiEngine === engine ? 'opacity-100' : 'opacity-0 group-hover:opacity-0'}>{engine}</span>
                         </Button>
                       ))}
                     </div>
-                    <Input
-                      placeholder="API Key"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      className="input-modern"
-                    />
+                    {aiEngine && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${aiEngine} API Key`}
+                          type="password"
+                          value={aiCredentials}
+                          onChange={(e) => setAiCredentials(e.target.value)}
+                          className="input-modern"
+                          disabled={aiConnected}
+                        />
+                        <Button
+                          onClick={handleAiConnect}
+                          disabled={!aiCredentials.trim() || aiConnected}
+                          className={`w-full btn-3d text-sm ${
+                            aiConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {aiConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <Button
                     onClick={handleConfigure}
-                    disabled={!managementTool || !aiEngine || !apiKey}
+                    disabled={!managementTool || !managementConnected || !aiEngine || !aiConnected}
                     className="w-full btn-3d bg-gradient-to-r from-gray-900 to-black dark:from-gray-100 dark:to-white text-white dark:text-black"
                   >
                     Save Configuration
