@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -9,20 +8,40 @@ import { LoginScreen } from '@/components/LoginScreen';
 import { Header } from '@/components/Header';
 import { AgentDirectory } from '@/components/AgentDirectory';
 import { ScrumMasterPage } from '@/components/ScrumMasterPage';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 const queryClient = new QueryClient();
 
-const App = () => {
+const AppContent = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
 
-  const handleLogin = () => {
+  useEffect(() => {
+    // Check for stored token and user data
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (token && storedUser) {
+      setUser(JSON.parse(storedUser));
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogin = (userData: any) => {
+    setUser(userData);
     setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('jiraStatus');
     setIsLoggedIn(false);
     setSelectedAgent(null);
+    setUser(null);
+    navigate('/login');
   };
 
   const handleAgentSelect = (agentId: string) => {
@@ -35,29 +54,21 @@ const App = () => {
 
   if (!isLoggedIn) {
     return (
-      <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <LoginScreen onLogin={handleLogin} />
-          </TooltipProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<LoginScreen onLogin={handleLogin} />} />
+        <Route path="/scrum-master" element={<ScrumMasterPage onBack={handleBackToDirectory} />} />
+      </Routes>
     );
   }
 
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
           <div className="min-h-screen transition-colors duration-300">
             <Header 
               onLogout={handleLogout} 
               onHome={handleBackToDirectory}
               showHomeButton={!!selectedAgent}
+        user={user}
             />
             
             {selectedAgent === 'scrum-master' ? (
@@ -75,9 +86,22 @@ const App = () => {
               <AgentDirectory onAgentSelect={handleAgentSelect} />
             )}
           </div>
+  );
+};
+
+const App = () => {
+  return (
+    <Router>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppContent />
         </TooltipProvider>
+        </ThemeProvider>
       </QueryClientProvider>
-    </ThemeProvider>
+    </Router>
   );
 };
 

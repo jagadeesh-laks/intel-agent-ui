@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -7,6 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -14,9 +15,14 @@ interface HeaderProps {
   onLogout: () => void;
   onHome?: () => void;
   showHomeButton?: boolean;
+  user: {
+    email: string;
+    name: string;
+    role: string;
+  } | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onLogout, onHome, showHomeButton = false }) => {
+export const Header: React.FC<HeaderProps> = ({ onLogout, onHome, showHomeButton = false, user }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-morphism professional-border transition-all duration-300">
       <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 dark:from-black/5 dark:via-black/10 dark:to-black/5"></div>
@@ -51,7 +57,18 @@ export const Header: React.FC<HeaderProps> = ({ onLogout, onHome, showHomeButton
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 glass-morphism border-0 professional-border">
+            <DropdownMenuContent align="end" className="w-56 glass-morphism border-0 professional-border">
+              {user && (
+                <>
+                  <DropdownMenuLabel className="text-white dark:text-black">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{user.name}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-600">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-slate-700/30 dark:bg-slate-300/30" />
+                </>
+              )}
               <DropdownMenuItem 
                 onClick={onLogout} 
                 className="text-red-400 dark:text-red-600 hover:bg-red-500/20 btn-3d flex items-center gap-2"

@@ -1,0 +1,391 @@
+{
+	"info": {
+		"_postman_id": "your-collection-id",
+		"name": "Scrum Master Bot API",
+		"description": "API collection for the Scrum Master Bot application",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"your-password\",\n    \"name\": \"Your Name\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"your-password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Create Test User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/create-test-user",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "create-test-user"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "AI Configuration",
+			"item": [
+				{
+					"name": "Connect AI Engine",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"aiEngine\": \"openai\",\n    \"aiCredentials\": \"YOUR_OPENAI_API_KEY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/connect",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "connect"]
+						}
+					}
+				},
+				{
+					"name": "Check AI Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get AI Configurations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/configs",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "configs"]
+						}
+					}
+				},
+				{
+					"name": "Delete AI Configuration",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"aiEngine\": \"openai\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "config"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Scrum Master",
+			"item": [
+				{
+					"name": "Create Configuration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"your-email@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-jira-api-token\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "config"]
+						}
+					}
+				},
+				{
+					"name": "Get Configuration",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "config"]
+						}
+					}
+				},
+				{
+					"name": "Update Configuration",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"your-email@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-jira-api-token\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "config"]
+						}
+					}
+				},
+				{
+					"name": "Delete Configuration",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "config"]
+						}
+					}
+				},
+				{
+					"name": "Get Jira Configs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/jira/configs",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "jira", "configs"]
+						}
+					}
+				},
+				{
+					"name": "Check Jira Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/jira/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "jira", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get Jira Projects",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/jira/projects",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "jira", "projects"]
+						}
+					}
+				},
+				{
+					"name": "Get Jira Boards",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/jira/boards",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "jira", "boards"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Chat",
+			"item": [
+				{
+					"name": "Send Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"aiEngine\": \"openai\",\n    \"projectKey\": \"TEST\",\n    \"boardId\": 1,\n    \"userMessage\": \"Create a new sprint starting next week\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/chat",
+							"host": ["{{base_url}}"],
+							"path": ["api", "chat"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/health",
+					"host": ["{{base_url}}"],
+					"path": ["api", "health"]
+				}
+			}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:6001",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your-jwt-token",
+			"type": "string"
+		}
+	]
+} 
+} 

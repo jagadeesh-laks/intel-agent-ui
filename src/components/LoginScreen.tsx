@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +5,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Bot, Mail, Lock, Eye, EyeOff, Zap } from 'lucide-react';
+import { Bot, Mail, Lock, Eye, EyeOff, Zap, Info } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  onLogin: (userData: any) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
@@ -17,14 +18,95 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:6001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Login failed');
+      }
+
+      // Store the token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Check Jira status after successful login
+      try {
+        const statusResponse = await fetch('http://localhost:6001/api/scrum-master/jira/status', {
+          headers: {
+            'Authorization': `Bearer ${data.token}`,
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          // Store the Jira status in localStorage
+          localStorage.setItem('jiraStatus', JSON.stringify({
+            isOnline: statusData.is_online,
+            isConfigured: statusData.is_online
+          }));
+        }
+      } catch (error) {
+        console.error('Error checking Jira status:', error);
+        // Set default status if check fails
+        localStorage.setItem('jiraStatus', JSON.stringify({
+          isOnline: false,
+          isConfigured: false
+        }));
+      }
+
+      // Call onLogin callback with user data
+      onLogin(data.user);
+
+      // Show success toast
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+
+      // Navigate to the scrum master page
+      navigate('/scrum-master');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred during login');
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : 'An error occurred during login',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRememberMeChange = (checked: boolean | "indeterminate") => {
     setRememberMe(checked === true);
+  };
+
+  const handleQuickLogin = () => {
+    setEmail('test@example.com');
+    setPassword('test123');
   };
 
   return (
@@ -116,28 +198,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <Button
               type="submit"
               className="w-full btn-3d h-14 text-lg font-semibold bg-gradient-to-r from-gray-900 to-black dark:from-gray-100 dark:to-white text-white dark:text-black transition-all duration-300"
+              disabled={isLoading}
             >
-              Sign In to AI Hub
+              {isLoading ? 'Signing in...' : 'Sign In to AI Hub'}
             </Button>
 
-            <div className="text-center text-slate-400 dark:text-slate-600">
-              <p className="text-sm mb-4">Or continue with</p>
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="btn-3d professional-border text-slate-200 dark:text-slate-800 hover:text-white dark:hover:text-black"
-                >
-                  Google
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="btn-3d professional-border text-slate-200 dark:text-slate-800 hover:text-white dark:hover:text-black"
-                >
-                  Microsoft
-                </Button>
+            {/* Development Quick Login */}
+            <div className="mt-4 p-4 bg-slate-800/20 dark:bg-slate-200/20 rounded-lg border border-slate-700/30 dark:border-slate-300/30">
+              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-600 mb-2">
+                <Info className="w-4 h-4" />
+                <span className="text-sm font-medium">Development Credentials</span>
               </div>
+              <div className="text-sm text-slate-500 dark:text-slate-500 space-y-1">
+                <p>Email: test@example.com</p>
+                <p>Password: test123</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleQuickLogin}
+                className="w-full mt-2 btn-3d professional-border text-slate-200 dark:text-slate-800 hover:text-white dark:hover:text-black"
+              >
+                Update
+              </Button>
             </div>
 
             <div className="text-center">
