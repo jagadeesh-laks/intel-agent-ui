@@ -10,6 +10,7 @@ from ..models.jira_config import JiraConfig
 import requests
 from requests.auth import HTTPBasicAuth
 from mongoengine import get_db
+from ..services.jira_helper import JiraHelper
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -51,9 +52,15 @@ def token_required(f):
                 logger.error("User not found for token")
                 return jsonify({'message': 'Invalid token'}), 401
             logger.debug(f"Token validated for user: {current_user.email}")
+        except jwt.ExpiredSignatureError:
+            logger.error("Token has expired")
+            return jsonify({'error': 'Token has expired. Please login again.'}), 401
+        except jwt.InvalidTokenError as e:
+            logger.error(f"Invalid token: {str(e)}")
+            return jsonify({'error': 'Invalid token. Please login again.'}), 401
         except Exception as e:
             logger.error(f"Token validation error: {str(e)}")
-            return jsonify({'message': 'Invalid token'}), 401
+            return jsonify({'error': str(e)}), 401
 
         return f(current_user, *args, **kwargs)
     return decorated
@@ -430,6 +437,135 @@ def get_jira_boards(current_user):
         }), 500
     except Exception as e:
         logger.error(f"Unexpected error fetching boards: {str(e)}")
+        return jsonify({
+            'error': 'Internal server error',
+            'message': str(e)
+        }), 500
+
+@scrum_master_bp.route('/jira/board/<int:board_id>/active-sprint', methods=['GET'])
+@token_required
+def get_active_sprint(current_user, board_id):
+    try:
+        logger.debug(f"Fetching active sprint for board {board_id}")
+        
+        # Get active Jira configuration
+        jira_config = JiraConfig.objects(user=current_user, is_active=True).first()
+        if not jira_config:
+            logger.error("No active Jira configuration found")
+            return jsonify({
+                'error': 'No Jira configuration found',
+                'message': 'Please configure Jira first'
+            }), 404
+
+        # Initialize Jira helper
+        jira_helper = JiraHelper(
+            domain=jira_config.domain,
+            email=jira_config.email,
+            api_token=jira_config.api_token
+        )
+
+        # Get active sprint
+        try:
+            active_sprint = jira_helper.get_active_sprint(board_id)
+            if not active_sprint:
+                logger.warning(f"No active sprint found for board {board_id}")
+                return jsonify({
+                    'error': 'No active sprint found',
+                    'message': 'There is no active sprint for this board'
+                }), 404
+
+            logger.info(f"Successfully fetched active sprint: {active_sprint['name']}")
+            return jsonify(active_sprint)
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Jira API error: {str(e)}")
+            return jsonify({
+                'error': 'Jira API error',
+                'message': str(e)
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error fetching active sprint: {str(e)}")
+        return jsonify({
+            'error': 'Internal server error',
+            'message': str(e)
+        }), 500
+
+@scrum_master_bp.route('/jira/sprints', methods=['GET'])
+@token_required
+def get_jira_sprints(current_user):
+    try:
+        logger.debug(f"Fetching Jira sprints for user: {current_user.email}")
+        
+        # Get board ID from query parameters
+        board_id = request.args.get('boardId')
+        if not board_id:
+            return jsonify({
+                'error': 'Missing boardId parameter',
+                'message': 'Please provide a boardId'
+            }), 400
+
+        # Get active Jira configuration
+        jira_config = JiraConfig.objects(user=current_user, is_active=True).first()
+        if not jira_config:
+            logger.error("No active Jira configuration found")
+            return jsonify({
+                'error': 'No Jira configuration found',
+                'message': 'Please configure Jira first'
+            }), 404
+
+        # Make request to Jira API
+        headers = {
+            'Accept': 'application/json'
+        }
+        
+        # Construct the URL properly
+        domain = jira_config.domain.replace('https://', '').replace('http://', '')
+        url = f'https://{domain}/rest/agile/1.0/board/{board_id}/sprint'
+        
+        logger.debug(f"Making request to Jira API: {url}")
+        
+        response = requests.get(
+            url,
+            headers=headers,
+            auth=HTTPBasicAuth(jira_config.email, jira_config.api_token),
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            sprints = data.get('values', [])
+            
+            # Filter active and future sprints
+            active_sprints = []
+            future_sprints = []
+            for sprint in sprints:
+                state = sprint.get('state', '').lower()
+                if state == 'active':
+                    active_sprints.append(sprint)
+                elif state == 'future':
+                    future_sprints.append(sprint)
+            
+            logger.info(f"Successfully fetched {len(sprints)} sprints")
+            return jsonify({
+                'activeSprints': active_sprints,
+                'futureSprints': future_sprints
+            })
+        else:
+            logger.error(f"Jira API error: {response.status_code} - {response.text}")
+            return jsonify({
+                'error': 'Failed to fetch sprints',
+                'message': f'Jira API error: {response.status_code}'
+            }), response.status_code
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Jira connection error: {str(e)}")
+        return jsonify({
+            'error': 'Connection error',
+            'message': str(e)
+        }), 500
+    except Exception as e:
+        logger.error(f"Unexpected error fetching sprints: {str(e)}")
         return jsonify({
             'error': 'Internal server error',
             'message': str(e)

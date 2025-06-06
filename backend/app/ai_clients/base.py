@@ -26,6 +26,9 @@ class AIClientFactory:
         elif ai_engine == "anthropic":
             from .anthropic_client import AnthropicClient
             return AnthropicClient(api_key)
+        elif ai_engine == "ollama":
+            from .ollama_client import OllamaClient
+            return OllamaClient(api_key)
         else:
             raise ValueError(f"Unsupported AI engine: {ai_engine}")
 
@@ -74,6 +77,8 @@ class OllamaClient(BaseAIClient):
         super().__init__()
         # credentials should be the host URL for Ollama
         self.host = credentials if credentials else "http://localhost:11434"
+        if not self.host.startswith(('http://', 'https://')):
+            self.host = f"http://{self.host}"
 
     def chat(self, messages):
         try:
@@ -87,7 +92,7 @@ class OllamaClient(BaseAIClient):
 
             # Use the ollama.chat function directly
             response = ollama.chat(
-                model="llama2",
+                model="llama3.2:latest",
                 messages=ollama_messages,
                 host=self.host
             )

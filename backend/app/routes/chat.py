@@ -3,7 +3,7 @@ from app.utils.auth import token_required
 from app.db import get_mongo_client
 from app.ai_clients.base import AIClientFactory
 from app.intent_schemas import INTENT_SCHEMAS
-from app.jira_helper import JiraHelper
+from app.services.jira_helper import JiraHelper
 from app.intent_handlers import invoke_intent_function
 from app.models.jira_config import JiraConfig
 from app.models.user import User
@@ -121,18 +121,17 @@ def chat():
         all_configs = list(db.user_configs.find())
         logger.debug(f"All configs in database: {all_configs}")
 
-        print(f"All configs in database: {all_configs}")
-
-        # Get OpenAI configuration directly
+        # Get AI configuration for the requested engine
         ai_config = db.user_configs.find_one({
-            "aiEngine": "openai"
+            "userId": user_id,
+            "aiEngine": ai_engine
         })
-        logger.debug(f"Found OpenAI config: {ai_config}")
+        logger.debug(f"Found AI config for {ai_engine}: {ai_config}")
         
         if not ai_config:
-            logger.error("No OpenAI configuration found")
+            logger.error(f"No {ai_engine} configuration found")
             return jsonify({
-                "error": "OpenAI configuration not found",
+                "error": f"{ai_engine} configuration not found",
                 "debug": {
                     "allConfigs": all_configs
                 }
@@ -148,7 +147,7 @@ def chat():
         jira_helper = JiraHelper(
             domain=jira_config.domain,
             email=jira_config.email,
-            token=jira_config.api_token
+            api_token=jira_config.api_token
         )
 
         # Fetch last 5 messages from conversations

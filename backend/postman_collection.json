@@ -1,13 +1,13 @@
 {
 	"info": {
-		"_postman_id": "your-collection-id",
-		"name": "Scrum Master Bot API",
-		"description": "API collection for the Scrum Master Bot application",
+		"_postman_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+		"name": "Scrum Master API",
+		"description": "API collection for the Scrum Master application",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Authentication",
+			"name": "Auth",
 			"item": [
 				{
 					"name": "Register",
@@ -21,7 +21,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"your-password\",\n    \"name\": \"Your Name\"\n}"
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\",\n    \"name\": \"Test User\",\n    \"role\": \"user\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/register",
@@ -42,7 +42,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"your-password\"\n}"
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/login",
@@ -71,35 +71,35 @@
 			]
 		},
 		{
-			"name": "AI Configuration",
+			"name": "Chat",
 			"item": [
 				{
-					"name": "Connect AI Engine",
+					"name": "Send Message",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"aiEngine\": \"openai\",\n    \"aiCredentials\": \"YOUR_OPENAI_API_KEY\"\n}"
+							"raw": "{\n    \"aiEngine\": \"ChatGPT\",\n    \"projectKey\": \"PROJ\",\n    \"boardId\": 123,\n    \"userMessage\": \"Create a new sprint starting next week\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/ai-config/connect",
+							"raw": "{{base_url}}/api/chat",
 							"host": ["{{base_url}}"],
-							"path": ["api", "ai-config", "connect"]
+							"path": ["api", "chat"]
 						}
 					}
 				},
 				{
-					"name": "Check AI Status",
+					"name": "Debug Config",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -109,51 +109,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/ai-config/status",
+							"raw": "{{base_url}}/api/debug/config",
 							"host": ["{{base_url}}"],
-							"path": ["api", "ai-config", "status"]
-						}
-					}
-				},
-				{
-					"name": "Get AI Configurations",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/ai-config/configs",
-							"host": ["{{base_url}}"],
-							"path": ["api", "ai-config", "configs"]
-						}
-					}
-				},
-				{
-					"name": "Delete AI Configuration",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"aiEngine\": \"openai\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/ai-config/config",
-							"host": ["{{base_url}}"],
-							"path": ["api", "ai-config", "config"]
+							"path": ["api", "debug", "config"]
 						}
 					}
 				}
@@ -163,22 +121,34 @@
 			"name": "Scrum Master",
 			"item": [
 				{
-					"name": "Create Configuration",
+					"name": "Test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/test",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "test"]
+						}
+					}
+				},
+				{
+					"name": "Create Config",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"your-email@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-jira-api-token\"\n}"
+							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"user@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-api-token\",\n    \"selectedProject\": \"PROJ\",\n    \"selectedBoard\": 123\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/scrum-master/config",
@@ -188,7 +158,7 @@
 					}
 				},
 				{
-					"name": "Get Configuration",
+					"name": "Get Config",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -205,22 +175,22 @@
 					}
 				},
 				{
-					"name": "Update Configuration",
+					"name": "Update Config",
 					"request": {
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"your-email@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-jira-api-token\"\n}"
+							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"user@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-api-token\",\n    \"selectedProject\": \"PROJ\",\n    \"selectedBoard\": 123\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/scrum-master/config",
@@ -230,7 +200,7 @@
 					}
 				},
 				{
-					"name": "Delete Configuration",
+					"name": "Delete Config",
 					"request": {
 						"method": "DELETE",
 						"header": [
@@ -245,7 +215,12 @@
 							"path": ["api", "scrum-master", "config"]
 						}
 					}
-				},
+				}
+			]
+		},
+		{
+			"name": "Jira",
+			"item": [
 				{
 					"name": "Get Jira Configs",
 					"request": {
@@ -313,50 +288,86 @@
 							"path": ["api", "scrum-master", "jira", "boards"]
 						}
 					}
-				}
-			]
-		},
-		{
-			"name": "Chat",
-			"item": [
+				},
 				{
-					"name": "Send Message",
+					"name": "Get Jira Sprints",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [
 							{
 								"key": "Authorization",
 								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"aiEngine\": \"openai\",\n    \"projectKey\": \"TEST\",\n    \"boardId\": 1,\n    \"userMessage\": \"Create a new sprint starting next week\"\n}"
-						},
 						"url": {
-							"raw": "{{base_url}}/api/chat",
+							"raw": "{{base_url}}/api/scrum-master/jira/sprints?boardId=123",
 							"host": ["{{base_url}}"],
-							"path": ["api", "chat"]
+							"path": ["api", "scrum-master", "jira", "sprints"],
+							"query": [
+								{
+									"key": "boardId",
+									"value": "123",
+									"description": "Board ID from GET /api/scrum-master/jira/boards"
+								}
+							]
+						},
+						"description": "Get active and future sprints for a board. Use this to get the sprint ID needed for the sprint timeline endpoint."
+					}
+				},
+				{
+					"name": "Get Active Sprint",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/jira/board/4/active-sprint",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "jira", "board", "4", "active-sprint"],
+							"description": "Get the active sprint for a board. Use this to get the sprint ID needed for the sprint timeline endpoint."
 						}
 					}
 				}
 			]
 		},
 		{
-			"name": "Health Check",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/api/health",
-					"host": ["{{base_url}}"],
-					"path": ["api", "health"]
+			"name": "Sprint Timeline",
+			"description": "To get the sprint timeline, you need to:\n1. First call GET /api/scrum-master/jira/boards to get your board ID\n2. Then call GET /api/scrum-master/jira/board/{boardId}/active-sprint to get the active sprint ID\n3. Finally use both IDs to call this endpoint",
+			"item": [
+				{
+					"name": "Get Sprint Timeline",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/sprint-timeline?boardId=123&sprintId=456",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "sprint-timeline"],
+							"query": [
+								{
+									"key": "boardId",
+									"value": "123",
+									"description": "Board ID from GET /api/scrum-master/jira/boards"
+								},
+								{
+									"key": "sprintId",
+									"value": "456",
+									"description": "Active sprint ID from Jira"
+								}
+							]
+						}
+					}
 				}
-			}
+			]
 		}
 	],
 	"event": [
@@ -378,7 +389,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:6001",
+			"value": "http://localhost:5000",
 			"type": "string"
 		},
 		{
@@ -387,5 +398,4 @@
 			"type": "string"
 		}
 	]
-} 
 } 

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any
-from .jira_helper import JiraHelper
+from app.services.jira_helper import JiraHelper
 
 async def invoke_intent_function(name: str, args: Dict[str, Any], jira: JiraHelper) -> str:
     """Process different intent functions and return appropriate responses."""

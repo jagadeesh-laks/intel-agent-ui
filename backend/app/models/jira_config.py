@@ -1,6 +1,9 @@
 from datetime import datetime
 from mongoengine import Document, StringField, ReferenceField, DateTimeField, BooleanField, signals
 from .user import User  # Import the User model
+import logging
+
+logger = logging.getLogger(__name__)
 
 class JiraConfig(Document):
     user = ReferenceField(User, required=True)  # Use the imported User model
@@ -22,6 +25,17 @@ class JiraConfig(Document):
             {'fields': ['user', 'domain'], 'unique': True}
         ]
     }
+
+    def clean_domain(self):
+        """Clean up domain URL by removing protocol and trailing slashes"""
+        if self.domain:
+            self.domain = self.domain.replace('https://', '').replace('http://', '').rstrip('/')
+            logger.debug(f"Cleaned domain URL: {self.domain}")
+
+    def save(self, *args, **kwargs):
+        """Override save to clean domain before saving"""
+        self.clean_domain()
+        return super().save(*args, **kwargs)
 
     def to_dict(self):
         return {

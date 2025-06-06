@@ -55,7 +55,7 @@ def register():
             'user_id': str(user.id),
             'email': user.email,
             'role': user.role,
-            'exp': datetime.utcnow() + timedelta(days=1)
+            'exp': datetime.utcnow() + timedelta(days=30)  # Token expires in 30 days
         }, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
         return jsonify({
@@ -98,7 +98,7 @@ def login():
             'user_id': str(user.id),
             'email': user.email,
             'role': user.role,
-            'exp': datetime.utcnow() + timedelta(days=1)
+            'exp': datetime.utcnow() + timedelta(days=30)  # Token expires in 30 days
         }, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
         logger.info(f"User logged in successfully: {email}")

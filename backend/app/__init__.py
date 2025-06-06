@@ -9,6 +9,10 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 from flask_jwt_extended import JWTManager
 from .db import get_mongo_client
+from app.routes.auth import auth_bp
+from app.routes.chat import chat_bp
+from app.routes.ai_config import ai_config_bp
+from app.routes.sprint_timeline import sprint_bp
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +53,7 @@ def create_app(config_class=Config):
     from .routes.scrum_master import scrum_master_bp
     from .routes.chat import chat_bp
     from .routes.ai_config import ai_config_bp
+    from .routes.sprint_timeline import sprint_bp
 
     # Register blueprints
     logger.debug("Registering auth blueprint with prefix /api/auth")
@@ -62,6 +67,9 @@ def create_app(config_class=Config):
 
     logger.debug("Registering AI config blueprint with prefix /api/ai-config")
     app.register_blueprint(ai_config_bp)
+
+    logger.debug("Registering sprint timeline blueprint with prefix /api/sprint-timeline")
+    app.register_blueprint(sprint_bp)
 
     # Health check route
     @app.route('/api/health', methods=['GET', 'OPTIONS'])

@@ -58,40 +58,34 @@ def token_required(f):
 def connect_ai(current_user):
     """Connect to an AI engine by storing its credentials."""
     if request.method == 'OPTIONS':
-        logger.debug("Handling OPTIONS request for /connect")
         return '', 200
-        
+
     try:
-        logger.debug("Received AI connection request")
-        logger.debug(f"Request headers: {dict(request.headers)}")
-        logger.debug(f"Request method: {request.method}")
-        logger.debug(f"Request path: {request.path}")
-        
         data = request.get_json()
-        if not data:
-            logger.error("No JSON data in request")
-            return jsonify({'error': 'No data provided'}), 400
+        if not data or 'aiEngine' not in data or 'aiCredentials' not in data:
+            return jsonify({'error': 'Missing required fields'}), 400
 
-        logger.debug(f"Request data: {data}")
+        # Validate AI engine
+        ai_engine = data['aiEngine'].lower()
+        if ai_engine not in ['openai', 'anthropic', 'ollama']:
+            return jsonify({'error': 'Unsupported AI engine'}), 400
 
-        required_fields = ['aiEngine', 'aiCredentials']
-        missing_fields = [field for field in required_fields if not data.get(field)]
-        
-        if missing_fields:
-            logger.error(f"Missing required fields: {missing_fields}")
-            return jsonify({
-                'error': 'Missing required fields',
-                'message': f'Required fields missing: {", ".join(missing_fields)}'
-            }), 400
+        # Validate credentials based on engine
+        if ai_engine == 'ollama':
+            # For Ollama, credentials should be a host URL
+            if not data['aiCredentials']:
+                data['aiCredentials'] = 'http://localhost:11434'
+        elif not data['aiCredentials']:
+            return jsonify({'error': 'AI credentials are required'}), 400
 
-        # Get MongoDB client and database
+        # Get MongoDB client
         client = get_mongo_client()
         db = client.scrum_master_db
 
-        # Check if configuration already exists
+        # Check for existing configuration
         existing_config = db.user_configs.find_one({
             "userId": str(current_user.id),
-            "aiEngine": data['aiEngine']
+            "aiEngine": ai_engine
         })
 
         if existing_config:
@@ -111,7 +105,7 @@ def connect_ai(current_user):
             # Create new configuration
             config = {
                 "userId": str(current_user.id),
-                "aiEngine": data['aiEngine'],
+                "aiEngine": ai_engine,
                 "aiCredentials": data['aiCredentials'],
                 "createdAt": datetime.utcnow(),
                 "updatedAt": datetime.utcnow()
@@ -123,7 +117,7 @@ def connect_ai(current_user):
         return jsonify({
             'message': message,
             'config': {
-                'aiEngine': data['aiEngine'],
+                'aiEngine': ai_engine,
                 'createdAt': datetime.utcnow().isoformat()
             }
         }), 200

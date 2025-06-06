@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,12 +26,26 @@ interface ScrumMasterPageProps {
   onBack: () => void;
 }
 
+interface SprintTimeline {
+  progress: number;
+  deviation: number;
+  startDate: string;
+  dueDate: string;
+}
+
 interface JiraConfig {
   id: string;
   email: string;
   domain: string;
   last_used: string | null;
   managementCredentials: string;
+}
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
 }
 
 export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
@@ -83,6 +97,11 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [sprintTimeline, setSprintTimeline] = useState<SprintTimeline | null>(null);
+
   const { toast } = useToast();
 
   // Add useEffect to fetch initial data when component mounts
@@ -100,6 +119,15 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
           },
           credentials: 'include'
         });
+
+        if (statusResponse.status === 401) {
+          // Token expired or invalid
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('jiraStatus');
+          window.location.href = '/login';
+          return;
+        }
 
         if (statusResponse.ok) {
           const statusData = await statusResponse.json();
@@ -219,9 +247,14 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
     }
   };
 
-  const handleProjectBoardSelect = () => {
+  const handleProjectBoardSelect = async () => {
     if (selectedProject && selectedBoard) {
       setShowSettings(false);
+      // Get the board ID from the selected board name
+      const boardId = boards.find(b => b.name === selectedBoard)?.id;
+      if (boardId) {
+        await fetchSprintTimeline(boardId.toString());
+      }
     }
   };
 
@@ -247,6 +280,7 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
     if (!message.trim() || !selectedProject || !selectedBoard) return;
 
     try {
+      setIsLoading(true);
       const token = localStorage.getItem('token');
       if (!token) {
         toast({
@@ -256,6 +290,15 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
         });
         return;
       }
+
+      // Add user message to chat
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: message,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, userMessage]);
 
       // Get project key and board ID
       const project = projects.find(p => p.name === selectedProject);
@@ -289,6 +332,17 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
         throw new Error('Failed to send message');
       }
 
+      const data = await response.json();
+
+      // Add AI response to chat
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+
       // Clear message input
       setMessage('');
 
@@ -299,6 +353,8 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
         description: "Failed to send message. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -732,7 +788,7 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   const getStatusColor = () => {
     if (isConfigured) {
       if (isJiraOnline) {
-        return "bg-green-100/20 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200/30 dark:border-green-800/30";
+      return "bg-green-100/20 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200/30 dark:border-green-800/30";
       }
       return "bg-yellow-100/20 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 border-yellow-200/30 dark:border-yellow-800/30";
     }
@@ -744,6 +800,53 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
       return isJiraOnline ? 'Online' : 'Setup Required';
     }
     return 'Setup Required';
+  };
+
+  // Add this useEffect for auto-scrolling
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const fetchSprintTimeline = async (boardId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // First get the active sprint for the board
+      const activeSprintResponse = await fetch(`http://localhost:6001/api/scrum-master/jira/board/${boardId}/active-sprint`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (activeSprintResponse.ok) {
+        const activeSprint = await activeSprintResponse.json();
+        if (activeSprint) {
+          // Then get the timeline data for the active sprint
+          const timelineResponse = await fetch(`http://localhost:6001/api/scrum-master/sprint-timeline?boardId=${boardId}&sprintId=${activeSprint.id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+            },
+            credentials: 'include'
+          });
+
+          if (timelineResponse.ok) {
+            const timelineData = await timelineResponse.json();
+            setSprintTimeline(timelineData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sprint timeline:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch sprint timeline data",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -888,8 +991,8 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
               </Card>
             )}
 
-            {/* Configuration Panel */}
-            {showSettings && (
+          {/* Configuration Panel */}
+          {showSettings && (
               <Card className="glass-morphism professional-border">
                 <CardHeader>
                   <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
@@ -953,21 +1056,21 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                           disabled={communicationConnected}
                         />
                         <div className="flex gap-2">
-                          <Button
-                            onClick={handleCommunicationConnect}
-                            disabled={!communicationCredentials.trim() || communicationConnected}
+                        <Button
+                          onClick={handleCommunicationConnect}
+                          disabled={!communicationCredentials.trim() || communicationConnected}
                             className={`flex-1 btn-3d text-sm ${
-                              communicationConnected 
-                                ? 'bg-green-600/20 text-green-400 border-green-400/30' 
-                                : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
-                            }`}
-                          >
-                            {communicationConnected ? (
-                              <><Check className="w-4 h-4 mr-2" />Connected</>
-                            ) : (
-                              <><Link className="w-4 h-4 mr-2" />Connect</>
-                            )}
-                          </Button>
+                            communicationConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {communicationConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
                           {communicationConnected && (
                             <Button
                               variant="outline"
@@ -1016,21 +1119,21 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                           disabled={emailConnected}
                         />
                         <div className="flex gap-2">
-                          <Button
-                            onClick={handleEmailConnect}
-                            disabled={!emailCredentials.trim() || emailConnected}
+                        <Button
+                          onClick={handleEmailConnect}
+                          disabled={!emailCredentials.trim() || emailConnected}
                             className={`flex-1 btn-3d text-sm ${
-                              emailConnected 
-                                ? 'bg-green-600/20 text-green-400 border-green-400/30' 
-                                : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
-                            }`}
-                          >
-                            {emailConnected ? (
-                              <><Check className="w-4 h-4 mr-2" />Connected</>
-                            ) : (
-                              <><Link className="w-4 h-4 mr-2" />Connect</>
-                            )}
-                          </Button>
+                            emailConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {emailConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
                           {emailConnected && (
                             <Button
                               variant="outline"
@@ -1079,23 +1182,23 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                           disabled={aiConnected || isConnecting}
                         />
                         <div className="flex gap-2">
-                          <Button
-                            onClick={handleAiConnect}
+                        <Button
+                          onClick={handleAiConnect}
                             disabled={!aiCredentials.trim() || aiConnected || isConnecting}
                             className={`flex-1 btn-3d text-sm ${
-                              aiConnected 
-                                ? 'bg-green-600/20 text-green-400 border-green-400/30' 
-                                : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
-                            }`}
-                          >
+                            aiConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
                             {isConnecting ? (
                               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting...</>
                             ) : aiConnected ? (
-                              <><Check className="w-4 h-4 mr-2" />Connected</>
-                            ) : (
-                              <><Link className="w-4 h-4 mr-2" />Connect</>
-                            )}
-                          </Button>
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
                           {aiConnected && (
                             <Button
                               variant="outline"
@@ -1121,25 +1224,27 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   >
                     Save Configuration
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                  </CardContent>
+                </Card>
+              )}
+                    </div>
 
           {/* Right Column - Chat and Activity Monitor */}
           <div className={`${(!selectedProject || !selectedBoard) && !showSettings ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6`}>
             {/* Chat Area */}
-            <Card className="h-96 flex flex-col glass-morphism professional-border">
+            <Card className="h-[600px] flex flex-col glass-morphism professional-border">
               <CardHeader className="pb-3">
                 <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
                   <MessageCircle className="w-5 h-5" />
                   AI Assistant Chat
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <div className="flex-1 mb-4 p-4 bg-gray-900/30 dark:bg-gray-100/30 rounded-lg overflow-y-auto">
+              <CardContent className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto mb-4 space-y-4 p-4 bg-gray-900/30 dark:bg-gray-100/30 rounded-lg">
                   {selectedProject && selectedBoard ? (
-                    <div className="space-y-4">
+                    <>
+                      {messages.length === 0 ? (
+                        <>
                       <div className="bg-gradient-to-r from-gray-800/20 to-black/20 dark:from-gray-200/20 dark:to-white/20 p-3 rounded-lg professional-border">
                         <p className="text-white dark:text-black">Hello! I'm your Scrum Master Bot. How can I help you today?</p>
                       </div>
@@ -1150,7 +1255,39 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                           </Button>
                         ))}
                       </div>
+                        </>
+                      ) : (
+                        messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <Card className={`max-w-[80%] ${
+                              msg.role === 'user'
+                                ? 'bg-blue-500/20 border-blue-500/30'
+                                : 'bg-gray-800/20 dark:bg-gray-200/20 border-gray-700/30 dark:border-gray-300/30'
+                            }`}>
+                              <CardContent className="p-3">
+                                <p className="text-white dark:text-black">{msg.content}</p>
+                                <span className="text-xs opacity-70 text-white dark:text-black">
+                                  {msg.timestamp.toLocaleTimeString()}
+                                </span>
+                              </CardContent>
+                            </Card>
                     </div>
+                        ))
+                      )}
+                      {isLoading && (
+                        <div className="flex justify-center">
+                          <Card className="bg-gray-800/20 dark:bg-gray-200/20 border-gray-700/30 dark:border-gray-300/30">
+                            <CardContent className="p-3">
+                              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                            </CardContent>
+                          </Card>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </>
                   ) : (
                     <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-600">
                       Configure your setup and select a project to start chatting
@@ -1158,21 +1295,25 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   )}
                 </div>
                 
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-auto">
                   <Input
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type your message..."
                     className="input-modern"
-                    disabled={!selectedProject || !selectedBoard}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    disabled={!selectedProject || !selectedBoard || isLoading}
+                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
                   />
                   <Button 
                     onClick={handleSendMessage}
-                    disabled={!selectedProject || !selectedBoard}
+                    disabled={!selectedProject || !selectedBoard || isLoading}
                     className="btn-3d bg-gradient-to-r from-gray-900 to-black dark:from-gray-100 dark:to-white text-white dark:text-black"
                   >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
                     <Send className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -1226,6 +1367,41 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                 </div>
               </CardContent>
             </Card>
+
+            {sprintTimeline && (
+              <Card className="mb-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Sprint Timeline
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span>Progress</span>
+                      <Badge variant={sprintTimeline.progress >= 70 ? "default" : "secondary"}>
+                        {sprintTimeline.progress}%
+                      </Badge>
+          </div>
+                    <div className="flex justify-between items-center">
+                      <span>Deviation</span>
+                      <Badge variant={Math.abs(sprintTimeline.deviation) <= 5 ? "default" : "destructive"}>
+                        {sprintTimeline.deviation > 0 ? '+' : ''}{sprintTimeline.deviation}%
+                      </Badge>
+        </div>
+                    <div className="flex justify-between items-center">
+                      <span>Start Date</span>
+                      <span>{new Date(sprintTimeline.startDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Due Date</span>
+                      <span>{new Date(sprintTimeline.dueDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
