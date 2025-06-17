@@ -36,12 +36,70 @@ interface SprintTimeline {
   dueDate: string;
 }
 
+interface SprintDetails {
+  sprint: {
+    id: string;
+    name: string;
+    state: string;
+    startDate: string;
+    endDate: string;
+    goal: string;
+  };
+  storyProgress: {
+    toDo: { count: number; percentage: number };
+    inProgress: { count: number; percentage: number };
+    done: { count: number; percentage: number };
+    total: number;
+  };
+  individualStatus: {
+    [key: string]: Array<{
+      key: string;
+      title: string;
+      status: string;
+      type: string;
+      priority: string;
+    }>;
+  };
+  bugStatus: Array<{
+    key: string;
+    summary: string;
+    assignee: string;
+    status: string;
+    priority: string;
+  }>;
+  sprintMetrics: {
+    velocity: {
+      plannedPoints: number;
+      completedPoints: number;
+      completionRate: number;
+    };
+    timeRemaining: {
+      totalDays: number;
+      elapsedDays: number;
+      remainingDays: number;
+    };
+  };
+}
+
 interface JiraConfig {
   id: string;
   email: string;
   domain: string;
   last_used: string | null;
   managementCredentials: string;
+}
+
+interface UserConfig {
+  aiEngine: string;
+  aiCredentials: string;
+  managementTool: string;
+  managementEmail: string;
+  managementDomain: string;
+  managementCredentials: string;
+  communicationTool: string;
+  communicationCredentials: string;
+  emailTool: string;
+  emailCredentials: string;
 }
 
 interface Message {
@@ -104,6 +162,8 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [sprintTimeline, setSprintTimeline] = useState<SprintTimeline | null>(null);
+  const [sprintDetails, setSprintDetails] = useState<SprintDetails | null>(null);
+  const [isLoadingSprintDetails, setIsLoadingSprintDetails] = useState(false);
 
   const { toast } = useToast();
 
@@ -117,6 +177,35 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
     'Lisa Zhang',
     'Alex Thompson'
   ]);
+
+  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+
+  const [activeSprint, setActiveSprint] = useState<any>(null);
+
+  // Add getBoardId function
+  const getBoardId = async (projectKey: string, boardName: string): Promise<string | null> => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+
+      const response = await fetch(`http://localhost:6001/api/scrum-master/jira/boards`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const board = data.boards.find((b: { name: string }) => b.name === boardName);
+      return board?.id || null;
+    } catch (error) {
+      console.error('Error getting board ID:', error);
+      return null;
+    }
+  };
 
   // Add useEffect to fetch initial data when component mounts
   useEffect(() => {
@@ -255,25 +344,241 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
     fetchInitialData();
   }, []);
 
+  // Add useEffect to fetch user config and connect AI engine when component mounts
+  useEffect(() => {
+    const fetchUserConfig = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('http://localhost:6001/api/scrum-master/config', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const config = await response.json();
+          setUserConfig(config);
+          
+          // Set AI engine if available (but don't connect yet)
+          if (config.aiEngine) {
+            setAiEngine(config.aiEngine);
+            if (config.aiCredentials) {
+              setAiCredentials(config.aiCredentials);
+              // Don't set aiConnected here, wait for project selection
+            }
+          }
+
+          // Set management tool if available
+          if (config.managementTool) {
+            setManagementTool(config.managementTool);
+            if (config.managementEmail && config.managementDomain && config.managementCredentials) {
+              setManagementEmail(config.managementEmail);
+              setManagementDomain(config.managementDomain);
+              setManagementCredentials(config.managementCredentials);
+              setManagementConnected(true);
+            }
+          }
+
+          // Set communication tool if available
+          if (config.communicationTool) {
+            setCommunicationTool(config.communicationTool);
+            if (config.communicationCredentials) {
+              setCommunicationCredentials(config.communicationCredentials);
+              setCommunicationConnected(true);
+            }
+          }
+
+          // Set email tool if available
+          if (config.emailTool) {
+            setEmailTool(config.emailTool);
+            if (config.emailCredentials) {
+              setEmailCredentials(config.emailCredentials);
+              setEmailConnected(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user config:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load user configuration",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchUserConfig();
+  }, []);
+
+  // Update handleConfigure to save the complete configuration
   const handleConfigure = async () => {
-    if (managementTool && managementConnected && aiEngine && aiConnected) {
-      await checkJiraStatus();
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('http://localhost:6001/api/scrum-master/config', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          managementTool,
+          managementEmail,
+          managementDomain,
+          managementCredentials,
+          communicationTool,
+          communicationCredentials,
+          emailTool,
+          emailCredentials,
+          aiEngine,
+          aiCredentials,
+          selectedProject,
+          selectedBoard
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: "Success",
+          description: "Configuration saved successfully"
+        });
+      setShowSettings(false);
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save configuration",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleProjectBoardSelect = async () => {
-    if (selectedProject && selectedBoard) {
-      setShowSettings(false);
-      // Get the board ID from the selected board name
-      const boardId = boards.find(b => b.name === selectedBoard)?.id;
-      if (boardId) {
-        await fetchSprintTimeline(boardId.toString());
+  const fetchSprintDetails = async (projectKey: string, boardId: string) => {
+    try {
+      setIsLoadingSprintDetails(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`http://localhost:6001/api/sprint-details/status?projectKey=${projectKey}&boardId=${boardId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch sprint details');
       }
+
+      const data = await response.json();
+      setSprintDetails(data);
+    } catch (error) {
+      console.error('Error fetching sprint details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch sprint details",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSprintDetails(false);
+    }
+  };
+
+  // Update handleProjectBoardSelect to fetch sprint details
+  const handleProjectBoardSelect = async (project: string, board: string) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const projectObj = projects.find(p => p.name === project);
+      const boardObj = boards.find(b => b.name === board);
+
+      if (!projectObj || !boardObj) {
+        throw new Error('Invalid project or board selection');
+      }
+
+      // Fetch sprint details
+      await fetchSprintDetails(projectObj.key, boardObj.id.toString());
+
+      // First get the user's configuration to check AI engine status
+      const configResponse = await fetch('http://localhost:6001/api/scrum-master/config', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!configResponse.ok) {
+        throw new Error('Failed to fetch user configuration');
+      }
+
+      const configData = await configResponse.json();
+      setUserConfig(configData);
+
+      // Fetch active sprint
+      const activeSprintResponse = await fetch(`http://localhost:6001/api/scrum-master/jira/board/${boardObj.id}/active-sprint`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!activeSprintResponse.ok) {
+        throw new Error('Failed to fetch active sprint');
+      }
+
+      const activeSprintData = await activeSprintResponse.json();
+      setActiveSprint(activeSprintData);
+
+      // Fetch sprint timeline
+      const timelineResponse = await fetch(`http://localhost:6001/api/scrum-master/timeline?projectKey=${projectObj.key}&boardId=${boardObj.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!timelineResponse.ok) {
+        const errorData = await timelineResponse.json();
+        throw new Error(errorData.message || 'Failed to fetch sprint timeline');
+      }
+
+      const timelineData = await timelineResponse.json();
+      setSprintTimeline(timelineData);
+
+    } catch (error) {
+      console.error('Error in handleProjectBoardSelect:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to select project and board",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    handleProjectBoardSelect();
+    if (selectedProject && selectedBoard) {
+      handleProjectBoardSelect(selectedProject, selectedBoard);
+    }
   }, [selectedProject, selectedBoard]);
 
   useEffect(() => {
@@ -291,7 +596,16 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   }, [selectedProject, projects, boards]);
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !selectedProject || !selectedBoard) return;
+    if (!message.trim() || !selectedProject || !selectedBoard || !aiEngine || !aiConnected) {
+      if (!aiEngine || !aiConnected) {
+        toast({
+          title: "Error",
+          description: "AI engine not connected. Please configure and connect an AI engine first.",
+          variant: "destructive"
+        });
+      }
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -338,12 +652,13 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
           userMessage: message,
           projectKey: project.key,
           boardId: board.id,
-          aiEngine: aiEngine
+          aiEngine: aiEngine.toLowerCase() // Ensure lowercase for consistency
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
       }
 
       const data = await response.json();
@@ -364,7 +679,7 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to send message. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -974,8 +1289,8 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
               </Card>
             )}
 
-            {/* Card 1: Sprint Details */}
-            {selectedProject && selectedBoard && (
+            {/* Sprint Details Card */}
+            {selectedProject && selectedBoard && !showSettings && (
               <Card className="glass-morphism professional-border">
                 <CardHeader>
                   <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
@@ -984,38 +1299,54 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Title:</span>
-                      <span className="text-white dark:text-black font-semibold">Sprint 24.2</span>
+                  {isLoadingSprintDetails ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-white dark:text-black" />
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">State:</span>
-                      <Badge className="bg-green-500/20 text-green-400 border-green-400/30">Active</Badge>
+                  ) : sprintDetails ? (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">Title:</span>
+                        <span className="text-white dark:text-black font-semibold">{sprintDetails.sprint.name}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">State:</span>
+                        <Badge className={`${
+                          sprintDetails.sprint.state === 'active' 
+                            ? 'bg-green-500/20 text-green-400 border-green-400/30'
+                            : 'bg-yellow-500/20 text-yellow-400 border-yellow-400/30'
+                        }`}>
+                          {sprintDetails.sprint.state.charAt(0).toUpperCase() + sprintDetails.sprint.state.slice(1)}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">Start Date:</span>
+                        <span className="text-white dark:text-black">{new Date(sprintDetails.sprint.startDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">Due Date:</span>
+                        <span className="text-white dark:text-black">{new Date(sprintDetails.sprint.endDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">Days Remaining:</span>
+                        <span className="text-white dark:text-black font-bold">
+                          {sprintDetails.sprintMetrics.timeRemaining.remainingDays} day(s)
+                        </span>
+                      </div>
+                      <div className="pt-2">
+                        <span className="text-slate-300 dark:text-slate-700">Goal:</span>
+                        <p className="text-white dark:text-black text-sm mt-1">{sprintDetails.sprint.goal}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Start Date:</span>
-                      <span className="text-white dark:text-black">2025-06-04</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Due Date:</span>
-                      <span className="text-white dark:text-black">2025-06-12</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Days Remaining:</span>
-                      <span className="text-white dark:text-black font-bold">4 day(s)</span>
-                    </div>
-                    <div className="pt-2">
-                      <span className="text-slate-300 dark:text-slate-700">Goal:</span>
-                      <p className="text-white dark:text-black text-sm mt-1">Complete user authentication and dashboard features</p>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-slate-300 dark:text-slate-700 text-center">No sprint details available</p>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Card 2: Current Story Progress */}
-            {selectedProject && selectedBoard && (
+            {/* Current Story Progress Card */}
+            {selectedProject && selectedBoard && !showSettings && (
               <Card className="glass-morphism professional-border">
                 <CardHeader>
                   <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
@@ -1024,34 +1355,46 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Sprint Planning:</span>
-                      <Badge variant="outline" className="text-white dark:text-black">1 (7.14%)</Badge>
+                  {isLoadingSprintDetails ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-white dark:text-black" />
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">In Development:</span>
-                      <Badge variant="outline" className="text-white dark:text-black">2 (14.29%)</Badge>
+                  ) : sprintDetails ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">To Do:</span>
+                        <Badge variant="outline" className="text-white dark:text-black">
+                          {sprintDetails.storyProgress.toDo.count} ({sprintDetails.storyProgress.toDo.percentage.toFixed(1)}%)
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">In Progress:</span>
+                        <Badge variant="outline" className="text-white dark:text-black">
+                          {sprintDetails.storyProgress.inProgress.count} ({sprintDetails.storyProgress.inProgress.percentage.toFixed(1)}%)
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 dark:text-slate-700">Done:</span>
+                        <Badge className="bg-green-500/20 text-green-400 border-green-400/30">
+                          {sprintDetails.storyProgress.done.count} ({sprintDetails.storyProgress.done.percentage.toFixed(1)}%)
+                        </Badge>
+                      </div>
+                      <div className="pt-2 border-t border-gray-700/30 dark:border-gray-300/30">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-300 dark:text-slate-700">Total Stories:</span>
+                          <span className="text-white dark:text-black font-semibold">{sprintDetails.storyProgress.total}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">In Test:</span>
-                      <Badge variant="outline" className="text-white dark:text-black">11 (78.57%)</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Ready For Test:</span>
-                      <Badge variant="outline" className="text-white dark:text-black">1 (7.14%)</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Done:</span>
-                      <Badge className="bg-green-500/20 text-green-400 border-green-400/30">5 (35.71%)</Badge>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-slate-300 dark:text-slate-700 text-center">No story progress available</p>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Card 3: Individual Status */}
-            {selectedProject && selectedBoard && (
+            {/* Individual Status Card */}
+            {selectedProject && selectedBoard && !showSettings && (
               <Card className="glass-morphism professional-border">
                 <CardHeader>
                   <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
@@ -1060,28 +1403,39 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="text-slate-300 dark:text-slate-700 text-sm mb-3">Select a team member to check their status:</p>
-                    <div className="grid grid-cols-1 gap-2">
-                      {teamMembers.map((member, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          onClick={() => handleTeamMemberSelect(member)}
-                          className="btn-3d professional-border text-white dark:text-black hover:text-white dark:hover:text-black text-left justify-start"
-                        >
-                          <Users className="w-4 h-4 mr-2" />
-                          <span className="opacity-100">{member}</span>
-                        </Button>
-                      ))}
+                  {isLoadingSprintDetails ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-white dark:text-black" />
                     </div>
-                  </div>
+                  ) : sprintDetails ? (
+                    <div className="space-y-2">
+                      <p className="text-slate-300 dark:text-slate-700 text-sm mb-3">Team members with assigned tasks:</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {Object.entries(sprintDetails.individualStatus).map(([assignee, issues]) => (
+                          <Button
+                            key={assignee}
+                            variant="outline"
+                            onClick={() => handleTeamMemberSelect(assignee)}
+                            className="btn-3d professional-border text-white dark:text-black hover:text-white dark:hover:text-black text-left justify-start"
+                          >
+                            <Users className="w-4 h-4 mr-2" />
+                            <span className="opacity-100">{assignee}</span>
+                            <Badge variant="outline" className="ml-auto">
+                              {issues.length} task{issues.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-300 dark:text-slate-700 text-center">No individual status available</p>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Card 4: Bug Status */}
-            {selectedProject && selectedBoard && (
+            {/* Bug Status Card */}
+            {selectedProject && selectedBoard && !showSettings && (
               <Card className="glass-morphism professional-border">
                 <CardHeader>
                   <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
@@ -1090,34 +1444,35 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-red-500/10 rounded-lg professional-border">
-                      <div className="text-2xl font-bold text-red-400">3</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-600">Critical</div>
+                  {isLoadingSprintDetails ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-white dark:text-black" />
                     </div>
-                    <div className="text-center p-3 bg-orange-500/10 rounded-lg professional-border">
-                      <div className="text-2xl font-bold text-orange-400">7</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-600">High</div>
+                  ) : sprintDetails ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {['Critical', 'High', 'Medium', 'Low'].map((priority) => {
+                        const bugs = sprintDetails.bugStatus.filter(bug => bug.priority.toLowerCase() === priority.toLowerCase());
+                        return (
+                          <div key={priority} className={`text-center p-3 ${
+                            priority === 'Critical' ? 'bg-red-500/10' :
+                            priority === 'High' ? 'bg-orange-500/10' :
+                            priority === 'Medium' ? 'bg-yellow-500/10' :
+                            'bg-blue-500/10'
+                          } rounded-lg professional-border`}>
+                            <div className={`text-2xl font-bold ${
+                              priority === 'Critical' ? 'text-red-400' :
+                              priority === 'High' ? 'text-orange-400' :
+                              priority === 'Medium' ? 'text-yellow-400' :
+                              'text-blue-400'
+                            }`}>{bugs.length}</div>
+                            <div className="text-xs text-slate-400 dark:text-slate-600">{priority}</div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="text-center p-3 bg-yellow-500/10 rounded-lg professional-border">
-                      <div className="text-2xl font-bold text-yellow-400">12</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-600">Medium</div>
-                    </div>
-                    <div className="text-center p-3 bg-blue-500/10 rounded-lg professional-border">
-                      <div className="text-2xl font-bold text-blue-400">5</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-600">Low</div>
-                    </div>
-                  </div>
-                  <div className="pt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Total Bugs:</span>
-                      <span className="text-white dark:text-black font-bold">27</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 dark:text-slate-700">Resolved Today:</span>
-                      <span className="text-green-400">4</span>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-slate-300 dark:text-slate-700 text-center">No bug status available</p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1132,7 +1487,229 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* ... keep existing code (all configuration sections) */}
+                  {/* Management Tools - Required */}
+                  <div>
+                    <Label className="text-white dark:text-black mb-3 block font-semibold">Management Tool *</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {['Jira', 'Azure', 'Trello', 'GitHub'].map((tool) => (
+                        <Button
+                          key={tool}
+                          variant={managementTool === tool ? 'default' : 'outline'}
+                          onClick={() => setManagementTool(managementTool === tool ? '' : tool)}
+                          className={`btn-3d text-sm group relative ${
+                            managementTool === tool 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
+                        >
+                          <span className="opacity-100">{tool}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    {managementTool && (
+                      <div className="space-y-2">
+                        {renderJiraConfig()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Communication Tools - Optional */}
+                  <div>
+                    <Label className="text-white dark:text-black mb-3 block">Communication Tool (Optional)</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {['Slack', 'Teams'].map((tool) => (
+                        <Button
+                          key={tool}
+                          variant={communicationTool === tool ? 'default' : 'outline'}
+                          onClick={() => setCommunicationTool(communicationTool === tool ? '' : tool)}
+                          className={`btn-3d text-sm group relative ${
+                            communicationTool === tool 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
+                        >
+                          <span className="opacity-100">{tool}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    {communicationTool && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${communicationTool} Webhook URL`}
+                          value={communicationCredentials}
+                          onChange={(e) => setCommunicationCredentials(e.target.value)}
+                          className="input-modern placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                          disabled={communicationConnected}
+                        />
+                        <div className="flex gap-2">
+                        <Button
+                          onClick={handleCommunicationConnect}
+                          disabled={!communicationCredentials.trim() || communicationConnected}
+                            className={`flex-1 btn-3d text-sm ${
+                            communicationConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {communicationConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                          {communicationConnected && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setCommunicationConnected(false);
+                                setCommunicationCredentials('');
+                              }}
+                              className="btn-3d text-sm professional-border text-white dark:text-black hover:text-white dark:hover:text-black"
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Email Integration - Optional */}
+                  <div>
+                    <Label className="text-white dark:text-black mb-3 block">Email Integration (Optional)</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {['Gmail', 'Office365'].map((tool) => (
+                        <Button
+                          key={tool}
+                          variant={emailTool === tool ? 'default' : 'outline'}
+                          onClick={() => setEmailTool(emailTool === tool ? '' : tool)}
+                          className={`btn-3d text-sm group relative ${
+                            emailTool === tool 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
+                        >
+                          <span className="opacity-100">{tool}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    {emailTool && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${emailTool} OAuth Token`}
+                          type="password"
+                          value={emailCredentials}
+                          onChange={(e) => setEmailCredentials(e.target.value)}
+                          className="input-modern placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                          disabled={emailConnected}
+                        />
+                        <div className="flex gap-2">
+                        <Button
+                          onClick={handleEmailConnect}
+                          disabled={!emailCredentials.trim() || emailConnected}
+                            className={`flex-1 btn-3d text-sm ${
+                            emailConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                          {emailConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                          {emailConnected && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEmailConnected(false);
+                                setEmailCredentials('');
+                              }}
+                              className="btn-3d text-sm professional-border text-white dark:text-black hover:text-white dark:hover:text-black"
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Engine - Required */}
+                  <div>
+                    <Label className="text-white dark:text-black mb-3 block font-semibold">AI Engine *</Label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {['ChatGPT', 'Gemini', 'Ollama', 'Meta'].map((engine) => (
+                        <Button
+                          key={engine}
+                          variant={aiEngine === engine ? 'default' : 'outline'}
+                          onClick={() => setAiEngine(aiEngine === engine ? '' : engine)}
+                          className={`btn-3d text-xs group relative ${
+                            aiEngine === engine 
+                              ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black border-white/30 dark:border-black/30' 
+                              : 'professional-border text-white dark:text-black hover:text-white dark:hover:text-black'
+                          }`}
+                        >
+                          <span className="opacity-100">{engine}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    {aiEngine && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder={`${aiEngine} API Key`}
+                          type="password"
+                          value={aiCredentials}
+                          onChange={(e) => setAiCredentials(e.target.value)}
+                          className="input-modern placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                          disabled={aiConnected || isConnecting}
+                        />
+                        <div className="flex gap-2">
+                        <Button
+                          onClick={handleAiConnect}
+                            disabled={!aiCredentials.trim() || aiConnected || isConnecting}
+                            className={`flex-1 btn-3d text-sm ${
+                            aiConnected 
+                              ? 'bg-green-600/20 text-green-400 border-green-400/30' 
+                              : 'bg-gray-800 dark:bg-gray-200 text-white dark:text-black'
+                          }`}
+                        >
+                            {isConnecting ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting...</>
+                            ) : aiConnected ? (
+                            <><Check className="w-4 h-4 mr-2" />Connected</>
+                          ) : (
+                            <><Link className="w-4 h-4 mr-2" />Connect</>
+                          )}
+                        </Button>
+                          {aiConnected && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setAiConnected(false);
+                                setAiCredentials('');
+                              }}
+                              className="btn-3d text-sm professional-border text-white dark:text-black hover:text-white dark:hover:text-black"
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={handleConfigure}
+                    disabled={!managementTool || !managementConnected || !aiEngine || !aiConnected}
+                    className="w-full btn-3d bg-gradient-to-r from-gray-900 to-black dark:from-gray-100 dark:to-white text-white dark:text-black"
+                  >
+                    Save Configuration
+                  </Button>
                   </CardContent>
                 </Card>
               )}
@@ -1140,7 +1717,144 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
 
           {/* Right Column - Chat and Activity Monitor */}
           <div className={`${(!selectedProject || !selectedBoard) && !showSettings ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6`}>
-            {/* ... keep existing code (chat area and activity monitor) */}
+            {/* Chat Area */}
+            <Card className="h-[600px] flex flex-col glass-morphism professional-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5" />
+                  AI Assistant Chat
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto mb-4 space-y-4 p-4 bg-gray-900/30 dark:bg-gray-100/30 rounded-lg">
+                  {selectedProject && selectedBoard ? (
+                    <>
+                      {messages.length === 0 ? (
+                        <>
+                      <div className="bg-gradient-to-r from-gray-800/20 to-black/20 dark:from-gray-200/20 dark:to-white/20 p-3 rounded-lg professional-border">
+                        <p className="text-white dark:text-black">Hello! I'm your Scrum Master Bot. How can I help you today?</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {['Sprint Status', 'Create Sprint', 'Team Velocity', 'Burndown Chart'].map((action) => (
+                          <Button key={action} variant="outline" size="sm" className="btn-3d professional-border text-xs">
+                            {action}
+                          </Button>
+                        ))}
+                      </div>
+                        </>
+                      ) : (
+                        messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <Card className={`max-w-[80%] ${
+                              msg.role === 'user'
+                                ? 'bg-blue-500/20 border-blue-500/30'
+                                : 'bg-gray-800/20 dark:bg-gray-200/20 border-gray-700/30 dark:border-gray-300/30'
+                            }`}>
+                              <CardContent className="p-3">
+                                <p className="text-white dark:text-black">{msg.content}</p>
+                                <span className="text-xs opacity-70 text-white dark:text-black">
+                                  {msg.timestamp.toLocaleTimeString()}
+                                </span>
+                              </CardContent>
+                            </Card>
+                    </div>
+                        ))
+                      )}
+                      {isLoading && (
+                        <div className="flex justify-center">
+                          <Card className="bg-gray-800/20 dark:bg-gray-200/20 border-gray-700/30 dark:border-gray-300/30">
+                            <CardContent className="p-3">
+                              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                            </CardContent>
+                          </Card>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-600">
+                      Configure your setup and select a project to start chatting
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-3 mt-auto">
+                  <Input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    className="input-modern"
+                    disabled={!selectedProject || !selectedBoard || isLoading}
+                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+                  />
+                  <Button 
+                    onClick={handleSendMessage}
+                    disabled={!selectedProject || !selectedBoard || isLoading}
+                    className="btn-3d bg-gradient-to-r from-gray-900 to-black dark:from-gray-100 dark:to-white text-white dark:text-black"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                    <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Monitor */}
+            {!showSettings && (
+            <Card className="glass-morphism professional-border">
+              <CardHeader>
+                <CardTitle className="text-white dark:text-black modern-text flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Team Activity Monitor
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-gray-800/10 dark:bg-gray-200/10 rounded-lg professional-border">
+                    <CheckCircle className="w-8 h-8 text-white dark:text-black mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-white dark:text-black">12</div>
+                    <div className="text-sm text-slate-400 dark:text-slate-600">Completed</div>
+                  </div>
+                  
+                  <div className="text-center p-4 bg-gray-800/10 dark:bg-gray-200/10 rounded-lg professional-border">
+                    <Clock className="w-8 h-8 text-white dark:text-black mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-white dark:text-black">8</div>
+                    <div className="text-sm text-slate-400 dark:text-slate-600">In Progress</div>
+                  </div>
+                  
+                  <div className="text-center p-4 bg-gray-800/10 dark:bg-gray-200/10 rounded-lg professional-border">
+                    <AlertTriangle className="w-8 h-8 text-red-400 dark:text-red-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-white dark:text-black">3</div>
+                    <div className="text-sm text-slate-400 dark:text-slate-600">Blocked</div>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <h4 className="text-white dark:text-black font-semibold">Recent Activities</h4>
+                  <div className="space-y-2">
+                    {[
+                      { user: 'John Doe', action: 'completed TASK-123', time: '2 min ago', icon: CheckCircle, color: 'white' },
+                      { user: 'Sarah Kim', action: 'started TASK-124', time: '5 min ago', icon: Clock, color: 'white' },
+                      { user: 'Mike Chen', action: 'blocked TASK-125', time: '10 min ago', icon: AlertTriangle, color: 'red' },
+                    ].map((activity, index) => (
+                      <div key={index} className="flex items-center gap-3 p-2 bg-gray-800/30 dark:bg-gray-200/30 rounded professional-border">
+                        <activity.icon className={`w-4 h-4 ${activity.color === 'red' ? 'text-red-400 dark:text-red-600' : 'text-white dark:text-black'}`} />
+                        <span className="text-white dark:text-black text-sm">{activity.user}</span>
+                        <span className="text-slate-400 dark:text-slate-600 text-sm">{activity.action}</span>
+                        <span className="text-slate-500 dark:text-slate-500 text-xs ml-auto">{activity.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            )}
           </div>
         </div>
       </div>

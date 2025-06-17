@@ -9,7 +9,7 @@ from datetime import datetime
 from ..models.jira_config import JiraConfig
 import requests
 from requests.auth import HTTPBasicAuth
-from mongoengine import get_db
+from ..services.mongo_client import get_mongo_client
 from ..services.jira_helper import JiraHelper
 
 # Configure logging
@@ -117,7 +117,7 @@ def create_config(current_user):
                 logger.info(f"Jira configuration {'updated' if jira_config.id else 'created'} for user: {current_user.email}")
 
                 # Get MongoDB client
-                db = get_db()
+                db = get_mongo_client().scrum_master_db
 
                 # Create or update user config
                 user_config = {
@@ -176,13 +176,35 @@ def create_config(current_user):
 @token_required
 def get_config(current_user):
     try:
-        scrum_master = ScrumMaster(current_user.db)
-        config = scrum_master.get_config(current_user.id)
+        # Get MongoDB client
+        db = get_mongo_client().scrum_master_db
+        
+        # Get the most recent config for the user
+        config = db.user_configs.find_one(
+            {"userId": str(current_user.id)},
+            sort=[("updated_at", -1)]
+        )
+        
         if not config:
-            return jsonify({'error': 'Configuration not found'}), 404
+            logger.debug(f"No configuration found for user {current_user.email}")
+            return jsonify({
+                'error': 'Configuration not found',
+                'message': 'No configuration found. Please configure your settings.'
+            }), 404
+            
+        # Convert ObjectId to string
+        if '_id' in config:
+            config['_id'] = str(config['_id'])
+            
+        logger.debug(f"Found configuration for user {current_user.email}")
         return jsonify(config), 200
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error getting configuration: {str(e)}", exc_info=True)
+        return jsonify({
+            'error': 'Internal server error',
+            'message': str(e)
+        }), 500
 
 @scrum_master_bp.route('/config', methods=['PUT'])
 @token_required

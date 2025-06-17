@@ -8,20 +8,22 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 from flask_jwt_extended import JWTManager
-from .db import get_mongo_client
+from .services.mongo_client import get_mongo_client, close_mongo_client
 from app.routes.auth import auth_bp
 from app.routes.chat import chat_bp
 from app.routes.ai_config import ai_config_bp
 from app.routes.sprint_timeline import sprint_bp
+from app.routes.sprint_details import sprint_details_bp
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
 def create_app(config_class=Config):
+    """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(config_class)
     
@@ -38,15 +40,21 @@ def create_app(config_class=Config):
     
     # Initialize JWT
     jwt = JWTManager(app)
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
     
     # Initialize MongoDB with MongoEngine
     mongo_uri = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/scrum_master_db')
     connect(host=mongo_uri)
     
     # Initialize PyMongo client for direct database access
-    client = get_mongo_client()
-    app.db = client.scrum_master_db
+    try:
+        client = get_mongo_client()
+        app.db = client.scrum_master_db
+        logger.info("MongoDB connection initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize MongoDB connection: {str(e)}")
+        raise
     
     # Import blueprints
     from .routes.auth import auth_bp
@@ -54,6 +62,7 @@ def create_app(config_class=Config):
     from .routes.chat import chat_bp
     from .routes.ai_config import ai_config_bp
     from .routes.sprint_timeline import sprint_bp
+    from .routes.sprint_details import sprint_details_bp
 
     # Register blueprints
     logger.debug("Registering auth blueprint with prefix /api/auth")
@@ -70,6 +79,9 @@ def create_app(config_class=Config):
 
     logger.debug("Registering sprint timeline blueprint with prefix /api/sprint-timeline")
     app.register_blueprint(sprint_bp)
+
+    logger.debug("Registering sprint details blueprint with prefix /api/sprint-details")
+    app.register_blueprint(sprint_details_bp)
 
     # Health check route
     @app.route('/api/health', methods=['GET', 'OPTIONS'])
@@ -121,5 +133,10 @@ def create_app(config_class=Config):
         logger.debug('Body: %s', request.get_data())
         logger.debug('Method: %s', request.method)
         logger.debug('Path: %s', request.path)
+
+    # Cleanup MongoDB connection on app shutdown
+    @app.teardown_appcontext
+    def cleanup_mongodb(exception=None):
+        close_mongo_client()
 
     return app 

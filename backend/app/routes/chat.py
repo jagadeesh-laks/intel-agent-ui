@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from app.utils.auth import token_required
-from app.db import get_mongo_client
+from app.services.mongo_client import get_mongo_client
 from app.ai_clients.base import AIClientFactory
 from app.intent_schemas import INTENT_SCHEMAS
 from app.services.jira_helper import JiraHelper
@@ -86,21 +86,10 @@ def debug_config():
         return jsonify({"error": str(e)}), 500
 
 @chat_bp.route("/chat", methods=["POST"])
-def chat():
+@token_required
+def chat(current_user):
     """Handle chat requests and process intents."""
     try:
-        # Get token from Authorization header
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            logger.error("No valid Authorization header found")
-            return jsonify({"error": "No token provided"}), 401
-
-        token = auth_header.split(" ")[1]
-        current_user = validate_token(token)
-        if not current_user:
-            logger.error("Invalid token")
-            return jsonify({"error": "Invalid token"}), 401
-
         data = request.get_json()
         logger.debug(f"Received chat request data: {data}")
         
@@ -112,66 +101,72 @@ def chat():
 
         if not all([ai_engine, project_key, board_id, user_message]):
             logger.error("Missing required fields in request")
-            return jsonify({"error": "Missing required fields"}), 400
+            return jsonify({
+                "error": "Missing required fields",
+                "message": "Please provide aiEngine, projectKey, boardId, and userMessage"
+            }), 400
 
         # Get MongoDB client
         db = get_mongo_client().scrum_master_db
 
-        # Debug: Show all configs in the database
-        all_configs = list(db.user_configs.find())
-        logger.debug(f"All configs in database: {all_configs}")
-
-        # Get AI configuration for the requested engine
-        ai_config = db.user_configs.find_one({
-            "userId": user_id,
-            "aiEngine": ai_engine
-        })
-        logger.debug(f"Found AI config for {ai_engine}: {ai_config}")
-        
-        if not ai_config:
-            logger.error(f"No {ai_engine} configuration found")
-            return jsonify({
-                "error": f"{ai_engine} configuration not found",
-                "debug": {
-                    "allConfigs": all_configs
-                }
-            }), 400
-
-        # Get Jira configuration
-        jira_config = JiraConfig.objects(user=current_user, is_active=True).first()
-        if not jira_config:
-            logger.error("No active Jira configuration found")
-            return jsonify({"error": "Jira not configured"}), 400
-
-        # Initialize Jira helper
-        jira_helper = JiraHelper(
-            domain=jira_config.domain,
-            email=jira_config.email,
-            api_token=jira_config.api_token
+        # Get the most recent AI configuration for the user
+        ai_config = db.user_configs.find_one(
+            {
+                "userId": user_id,
+                "aiEngine": ai_engine
+            },
+            sort=[("updated_at", -1)]
         )
 
-        # Fetch last 5 messages from conversations
+        if not ai_config:
+            logger.error(f"No AI configuration found for user {user_id} and engine {ai_engine}")
+            return jsonify({
+                "error": "AI engine not configured",
+                "message": f"Please configure {ai_engine} in your settings first"
+            }), 400
+
+        if "aiCredentials" not in ai_config:
+            logger.error(f"Missing AI credentials for user {user_id} and engine {ai_engine}")
+            return jsonify({
+                "error": "AI credentials missing",
+                "message": f"Please update your {ai_engine} configuration with valid credentials"
+            }), 400
+
+        # Get existing conversation or create new one
         convo = db.conversations.find_one({
             "userId": user_id,
             "projectKey": project_key,
             "boardId": board_id
         })
 
-        # Build messages list
+        # Prepare messages for AI
         messages = []
         if convo and "messages" in convo:
-            # Convert messages to AI format, removing timestamps
-            messages = [{
-                "role": msg["role"],
-                "content": msg["content"]
-            } for msg in convo["messages"][-5:]]
+            # Get last 10 messages for context
+            recent_messages = convo["messages"][-10:]
+            # Flatten any nested lists and ensure proper message format
+            for msg in recent_messages:
+                if isinstance(msg, list):
+                    # If it's a list, process each message in the list
+                    for sub_msg in msg:
+                        if isinstance(sub_msg, dict) and 'role' in sub_msg and 'content' in sub_msg:
+                            messages.append({
+                                "role": sub_msg["role"],
+                                "content": sub_msg["content"]
+                            })
+                elif isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                    # If it's a single message, add it directly
+                    messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
 
         # Add system message
         system_msg = {
             "role": "system",
-            "content": f"You are a Scrum Master assistant for project {project_key}. "
-                      f"Use Jira to create sprints, fetch sprint status, add issues, "
-                      f"close sprints, and list backlog items."
+            "content": f"You are a Scrum Master AI assistant helping with project {project_key} and board {board_id}. "
+                      f"Your role is to help manage sprints, track issues, and coordinate with the team. "
+                      f"Be concise and professional in your responses."
         }
         messages = [system_msg] + messages
 
@@ -187,53 +182,82 @@ def chat():
             ai_client = AIClientFactory.create_client(ai_engine, ai_config["aiCredentials"])
         except Exception as e:
             logger.error(f"Error creating AI client: {str(e)}")
-            return jsonify({"error": f"Error initializing AI client: {str(e)}"}), 500
+            return jsonify({
+                "error": "AI client error",
+                "message": f"Failed to initialize {ai_engine} client. Please check your configuration."
+            }), 500
 
         # Get AI response
         try:
             logger.debug("Getting AI response...")
             ai_response = ai_client.chat(messages)
             logger.debug("Got AI response successfully")
+
+            # Save conversation
+            if not convo:
+                # Create new conversation
+                db.conversations.insert_one({
+                    "userId": user_id,
+                    "projectKey": project_key,
+                    "boardId": board_id,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": user_message,
+                            "timestamp": datetime.utcnow()
+                        },
+                        {
+                            "role": "assistant",
+                            "content": ai_response,
+                            "timestamp": datetime.utcnow()
+                        }
+                    ],
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                })
+            else:
+                # Update existing conversation - push each message individually
+                db.conversations.update_one(
+                    {
+                        "userId": user_id,
+                        "projectKey": project_key,
+                        "boardId": board_id
+                    },
+                    {
+                        "$push": {
+                            "messages": {
+                                "$each": [
+                                    {
+                                        "role": "user",
+                                        "content": user_message,
+                                        "timestamp": datetime.utcnow()
+                                    },
+                                    {
+                                        "role": "assistant",
+                                        "content": ai_response,
+                                        "timestamp": datetime.utcnow()
+                                    }
+                                ]
+                            }
+                        },
+                        "$set": {
+                            "updated_at": datetime.utcnow()
+                        }
+                    }
+                )
+
+            return jsonify({"response": ai_response})
+
         except Exception as e:
             logger.error(f"Error getting AI response: {str(e)}")
-            return jsonify({"error": f"Error getting AI response: {str(e)}"}), 500
-
-        # Save conversation
-        if not convo:
-            convo = {
-                "userId": user_id,
-                "projectKey": project_key,
-                "boardId": board_id,
-                "messages": []
-            }
-            db.conversations.insert_one(convo)
-
-        # Add messages to conversation with timestamps
-        current_time = datetime.utcnow()
-        db.conversations.update_one(
-            {"_id": convo["_id"]},
-            {
-                "$push": {
-                    "messages": {
-                        "role": "user",
-                        "content": user_message,
-                        "timestamp": current_time
-                    },
-                    "messages": {
-                        "role": "assistant",
-                        "content": ai_response,
-                        "timestamp": current_time
-                    }
-                }
-            }
-        )
-
-        return jsonify({
-            "response": ai_response,
-            "projectKey": project_key,
-            "boardId": board_id
-        })
+            return jsonify({
+                "error": "AI response error",
+                "message": f"Failed to get response from {ai_engine}. Please try again."
+            }), 500
 
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500 
+        logger.error(f"Unexpected error in chat endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "message": "An unexpected error occurred. Please try again."
+        }), 500 

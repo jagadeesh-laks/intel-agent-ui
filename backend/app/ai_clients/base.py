@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import os
-from ..db import get_mongo_client
+from ..services.mongo_client import get_mongo_client
 from openai import OpenAI
 import google.generativeai as genai
-import ollama
 
 class BaseAIClient:
     def __init__(self):
@@ -70,32 +69,4 @@ class GeminiClient(BaseAIClient):
             response = chat.send_message(messages[-1]["content"])
             return response.text
         except Exception as e:
-            raise Exception(f"Error in Gemini client: {str(e)}")
-
-class OllamaClient(BaseAIClient):
-    def __init__(self, credentials):
-        super().__init__()
-        # credentials should be the host URL for Ollama
-        self.host = credentials if credentials else "http://localhost:11434"
-        if not self.host.startswith(('http://', 'https://')):
-            self.host = f"http://{self.host}"
-
-    def chat(self, messages):
-        try:
-            # Convert messages to Ollama format
-            ollama_messages = []
-            for msg in messages:
-                ollama_messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
-
-            # Use the ollama.chat function directly
-            response = ollama.chat(
-                model="llama3.2:latest",
-                messages=ollama_messages,
-                host=self.host
-            )
-            return response["message"]["content"]
-        except Exception as e:
-            raise Exception(f"Error in Ollama client: {str(e)}") 
+            raise Exception(f"Error in Gemini client: {str(e)}") 

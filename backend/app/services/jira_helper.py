@@ -38,7 +38,7 @@ class JiraHelper:
             url = f"{self.base_url}/rest/agile/1.0/sprint/{sprint_id}/issue"
             params = {
                 'maxResults': 1000,
-                'fields': 'status,summary,assignee'
+                'fields': 'status,summary,assignee,issuetype,priority,customfield_10016'
             }
             logger.debug(f"Getting sprint issues from: {url}")
             response = requests.get(url, auth=self.auth, headers=self.headers, params=params)

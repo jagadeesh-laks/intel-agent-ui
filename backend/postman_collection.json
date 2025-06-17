@@ -1,13 +1,13 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
-		"name": "Scrum Master API",
-		"description": "API collection for the Scrum Master application",
+		"name": "Scrum Master Bot API",
+		"description": "API collection for the Scrum Master Bot application",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Auth",
+			"name": "Authentication",
 			"item": [
 				{
 					"name": "Register",
@@ -19,14 +19,14 @@
 								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\",\n    \"name\": \"Test User\",\n    \"role\": \"user\"\n}"
-						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/register",
 							"host": ["{{base_url}}"],
 							"path": ["api", "auth", "register"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\",\n    \"name\": \"Test User\",\n    \"role\": \"user\"\n}"
 						}
 					}
 				},
@@ -40,14 +40,14 @@
 								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\"\n}"
-						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/login",
 							"host": ["{{base_url}}"],
 							"path": ["api", "auth", "login"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\"\n}"
 						}
 					}
 				},
@@ -71,6 +71,95 @@
 			]
 		},
 		{
+			"name": "AI Configuration",
+			"item": [
+				{
+					"name": "Connect AI",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/connect",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "connect"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"aiEngine\": \"ollama\",\n    \"aiCredentials\": {\n        \"model\": \"llama2\",\n        \"host\": \"http://localhost:11434\"\n    }\n}"
+						}
+					}
+				},
+				{
+					"name": "Check AI Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get AI Configs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/configs",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "configs"]
+						}
+					}
+				},
+				{
+					"name": "Delete AI Config",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/ai-config/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-config", "config"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"aiEngine\": \"ollama\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
 			"name": "Chat",
 			"item": [
 				{
@@ -87,31 +176,14 @@
 								"value": "Bearer {{token}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"aiEngine\": \"ChatGPT\",\n    \"projectKey\": \"PROJ\",\n    \"boardId\": 123,\n    \"userMessage\": \"Create a new sprint starting next week\"\n}"
-						},
 						"url": {
 							"raw": "{{base_url}}/api/chat",
 							"host": ["{{base_url}}"],
 							"path": ["api", "chat"]
-						}
-					}
-				},
-				{
-					"name": "Debug Config",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/debug/config",
-							"host": ["{{base_url}}"],
-							"path": ["api", "debug", "config"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"aiEngine\": \"ollama\",\n    \"projectKey\": \"NAAR\",\n    \"boardId\": \"4\",\n    \"userMessage\": \"What is the status of the current sprint?\"\n}"
 						}
 					}
 				}
@@ -120,18 +192,6 @@
 		{
 			"name": "Scrum Master",
 			"item": [
-				{
-					"name": "Test",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/scrum-master/test",
-							"host": ["{{base_url}}"],
-							"path": ["api", "scrum-master", "test"]
-						}
-					}
-				},
 				{
 					"name": "Create Config",
 					"request": {
@@ -146,31 +206,14 @@
 								"value": "Bearer {{token}}"
 							}
 						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "config"]
+						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"user@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-api-token\",\n    \"selectedProject\": \"PROJ\",\n    \"selectedBoard\": 123\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/scrum-master/config",
-							"host": ["{{base_url}}"],
-							"path": ["api", "scrum-master", "config"]
-						}
-					}
-				},
-				{
-					"name": "Get Config",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/scrum-master/config",
-							"host": ["{{base_url}}"],
-							"path": ["api", "scrum-master", "config"]
+							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"user@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-api-token\",\n    \"selectedProject\": \"NAAR\",\n    \"selectedBoard\": \"4\"\n}"
 						}
 					}
 				},
@@ -188,39 +231,17 @@
 								"value": "Bearer {{token}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"user@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-api-token\",\n    \"selectedProject\": \"PROJ\",\n    \"selectedBoard\": 123\n}"
-						},
 						"url": {
 							"raw": "{{base_url}}/api/scrum-master/config",
 							"host": ["{{base_url}}"],
 							"path": ["api", "scrum-master", "config"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"managementTool\": \"Jira\",\n    \"managementEmail\": \"user@example.com\",\n    \"managementDomain\": \"your-domain.atlassian.net\",\n    \"managementCredentials\": \"your-api-token\",\n    \"selectedProject\": \"NAAR\",\n    \"selectedBoard\": \"4\"\n}"
 						}
 					}
 				},
-				{
-					"name": "Delete Config",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/scrum-master/config",
-							"host": ["{{base_url}}"],
-							"path": ["api", "scrum-master", "config"]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Jira",
-			"item": [
 				{
 					"name": "Get Jira Configs",
 					"request": {
@@ -290,31 +311,6 @@
 					}
 				},
 				{
-					"name": "Get Jira Sprints",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/scrum-master/jira/sprints?boardId=123",
-							"host": ["{{base_url}}"],
-							"path": ["api", "scrum-master", "jira", "sprints"],
-							"query": [
-								{
-									"key": "boardId",
-									"value": "123",
-									"description": "Board ID from GET /api/scrum-master/jira/boards"
-								}
-							]
-						},
-						"description": "Get active and future sprints for a board. Use this to get the sprint ID needed for the sprint timeline endpoint."
-					}
-				},
-				{
 					"name": "Get Active Sprint",
 					"request": {
 						"method": "GET",
@@ -327,8 +323,30 @@
 						"url": {
 							"raw": "{{base_url}}/api/scrum-master/jira/board/4/active-sprint",
 							"host": ["{{base_url}}"],
-							"path": ["api", "scrum-master", "jira", "board", "4", "active-sprint"],
-							"description": "Get the active sprint for a board. Use this to get the sprint ID needed for the sprint timeline endpoint."
+							"path": ["api", "scrum-master", "jira", "board", "4", "active-sprint"]
+						}
+					}
+				},
+				{
+					"name": "Get Jira Sprints",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/scrum-master/jira/sprints?boardId=4",
+							"host": ["{{base_url}}"],
+							"path": ["api", "scrum-master", "jira", "sprints"],
+							"query": [
+								{
+									"key": "boardId",
+									"value": "4"
+								}
+							]
 						}
 					}
 				}
@@ -336,7 +354,6 @@
 		},
 		{
 			"name": "Sprint Timeline",
-			"description": "To get the sprint timeline, you need to:\n1. First call GET /api/scrum-master/jira/boards to get your board ID\n2. Then call GET /api/scrum-master/jira/board/{boardId}/active-sprint to get the active sprint ID\n3. Finally use both IDs to call this endpoint",
 			"item": [
 				{
 					"name": "Get Sprint Timeline",
@@ -349,19 +366,49 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/scrum-master/sprint-timeline?boardId=123&sprintId=456",
+							"raw": "{{base_url}}/api/scrum-master/sprint-timeline?boardId=4&sprintId=123",
 							"host": ["{{base_url}}"],
 							"path": ["api", "scrum-master", "sprint-timeline"],
 							"query": [
 								{
 									"key": "boardId",
-									"value": "123",
-									"description": "Board ID from GET /api/scrum-master/jira/boards"
+									"value": "4"
 								},
 								{
 									"key": "sprintId",
-									"value": "456",
-									"description": "Active sprint ID from Jira"
+									"value": "123"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sprint Details",
+			"item": [
+				{
+					"name": "Get Sprint Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/sprint-details/status?projectKey=NAAR&boardId=4",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sprint-details", "status"],
+							"query": [
+								{
+									"key": "projectKey",
+									"value": "NAAR"
+								},
+								{
+									"key": "boardId",
+									"value": "4"
 								}
 							]
 						}

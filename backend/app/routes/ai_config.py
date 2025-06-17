@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..models.user import User
-from ..db import get_mongo_client
+from ..services.mongo_client import get_mongo_client
 import logging
 from functools import wraps
 import jwt
@@ -56,71 +56,45 @@ def token_required(f):
 @ai_config_bp.route('/connect', methods=['POST', 'OPTIONS'])
 @token_required
 def connect_ai(current_user):
-    """Connect to an AI engine by storing its credentials."""
+    """Connect to an AI engine."""
     if request.method == 'OPTIONS':
         return '', 200
-
+        
     try:
         data = request.get_json()
         if not data or 'aiEngine' not in data or 'aiCredentials' not in data:
-            return jsonify({'error': 'Missing required fields'}), 400
+            logger.error("Missing required fields in request data")
+            return jsonify({'error': 'AI engine and credentials are required'}), 400
 
-        # Validate AI engine
-        ai_engine = data['aiEngine'].lower()
-        if ai_engine not in ['openai', 'anthropic', 'ollama']:
-            return jsonify({'error': 'Unsupported AI engine'}), 400
-
-        # Validate credentials based on engine
-        if ai_engine == 'ollama':
-            # For Ollama, credentials should be a host URL
-            if not data['aiCredentials']:
-                data['aiCredentials'] = 'http://localhost:11434'
-        elif not data['aiCredentials']:
-            return jsonify({'error': 'AI credentials are required'}), 400
-
-        # Get MongoDB client
+        logger.debug(f"Connecting AI engine for user: {current_user.email}, engine: {data['aiEngine']}")
         client = get_mongo_client()
         db = client.scrum_master_db
 
-        # Check for existing configuration
-        existing_config = db.user_configs.find_one({
-            "userId": str(current_user.id),
-            "aiEngine": ai_engine
-        })
-
-        if existing_config:
-            # Update existing configuration
-            db.user_configs.update_one(
-                {"_id": existing_config["_id"]},
-                {
-                    "$set": {
-                        "aiCredentials": data['aiCredentials'],
-                        "updatedAt": datetime.utcnow()
-                    }
+        # Update or insert the AI configuration
+        result = db.user_configs.update_one(
+            {"userId": str(current_user.id)},
+            {
+                "$set": {
+                    "aiEngine": data['aiEngine'],
+                    "aiCredentials": data['aiCredentials'],
+                    "updated_at": datetime.utcnow()
                 }
-            )
-            message = "AI configuration updated successfully"
-            logger.info(f"Updated AI configuration for user: {current_user.email}")
-        else:
-            # Create new configuration
-            config = {
-                "userId": str(current_user.id),
-                "aiEngine": ai_engine,
-                "aiCredentials": data['aiCredentials'],
-                "createdAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow()
-            }
-            db.user_configs.insert_one(config)
-            message = "AI configuration created successfully"
-            logger.info(f"Created new AI configuration for user: {current_user.email}")
+            },
+            upsert=True
+        )
 
-        return jsonify({
-            'message': message,
-            'config': {
-                'aiEngine': ai_engine,
-                'createdAt': datetime.utcnow().isoformat()
-            }
-        }), 200
+        if result.modified_count > 0 or result.upserted_id:
+            logger.info(f"Successfully connected AI engine for user: {current_user.email}")
+            return jsonify({
+                'message': f'Successfully connected to {data["aiEngine"]}',
+                'aiEngine': data['aiEngine']
+            })
+        else:
+            logger.error("Failed to update AI configuration")
+            return jsonify({
+                'error': 'Failed to connect AI engine',
+                'message': 'Could not update configuration'
+            }), 500
 
     except Exception as e:
         logger.error(f"Error connecting AI engine: {str(e)}", exc_info=True)
