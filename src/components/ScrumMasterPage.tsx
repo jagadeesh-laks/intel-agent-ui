@@ -29,13 +29,6 @@ interface ScrumMasterPageProps {
   onBack: () => void;
 }
 
-interface SprintTimeline {
-  progress: number;
-  deviation: number;
-  startDate: string;
-  dueDate: string;
-}
-
 interface SprintDetails {
   sprint: {
     id: string;
@@ -161,7 +154,6 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [sprintTimeline, setSprintTimeline] = useState<SprintTimeline | null>(null);
   const [sprintDetails, setSprintDetails] = useState<SprintDetails | null>(null);
   const [isLoadingSprintDetails, setIsLoadingSprintDetails] = useState(false);
 
@@ -545,22 +537,6 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
 
       const activeSprintData = await activeSprintResponse.json();
       setActiveSprint(activeSprintData);
-
-      // Fetch sprint timeline
-      const timelineResponse = await fetch(`http://localhost:6001/api/scrum-master/timeline?projectKey=${projectObj.key}&boardId=${boardObj.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!timelineResponse.ok) {
-        const errorData = await timelineResponse.json();
-        throw new Error(errorData.message || 'Failed to fetch sprint timeline');
-      }
-
-      const timelineData = await timelineResponse.json();
-      setSprintTimeline(timelineData);
 
     } catch (error) {
       console.error('Error in handleProjectBoardSelect:', error);
@@ -1135,48 +1111,6 @@ export const ScrumMasterPage: React.FC<ScrumMasterPageProps> = ({ onBack }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const fetchSprintTimeline = async (boardId: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      // First get the active sprint for the board
-      const activeSprintResponse = await fetch(`http://localhost:6001/api/scrum-master/jira/board/${boardId}/active-sprint`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-        credentials: 'include'
-      });
-
-      if (activeSprintResponse.ok) {
-        const activeSprint = await activeSprintResponse.json();
-        if (activeSprint) {
-          // Then get the timeline data for the active sprint
-          const timelineResponse = await fetch(`http://localhost:6001/api/scrum-master/sprint-timeline?boardId=${boardId}&sprintId=${activeSprint.id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json'
-            },
-            credentials: 'include'
-          });
-
-          if (timelineResponse.ok) {
-            const timelineData = await timelineResponse.json();
-            setSprintTimeline(timelineData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching sprint timeline:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch sprint timeline data",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleTeamMemberSelect = (memberName: string) => {
     setMessage(`What is the current status of ${memberName}?`);

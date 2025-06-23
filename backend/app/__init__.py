@@ -12,7 +12,7 @@ from .services.mongo_client import get_mongo_client, close_mongo_client
 from app.routes.auth import auth_bp
 from app.routes.chat import chat_bp
 from app.routes.ai_config import ai_config_bp
-from app.routes.sprint_timeline import sprint_bp
+from app.routes.scrum_master import scrum_master_bp
 from app.routes.sprint_details import sprint_details_bp
 
 # Configure logging
@@ -61,7 +61,6 @@ def create_app(config_class=Config):
     from .routes.scrum_master import scrum_master_bp
     from .routes.chat import chat_bp
     from .routes.ai_config import ai_config_bp
-    from .routes.sprint_timeline import sprint_bp
     from .routes.sprint_details import sprint_details_bp
 
     # Register blueprints
@@ -76,9 +75,6 @@ def create_app(config_class=Config):
 
     logger.debug("Registering AI config blueprint with prefix /api/ai-config")
     app.register_blueprint(ai_config_bp)
-
-    logger.debug("Registering sprint timeline blueprint with prefix /api/sprint-timeline")
-    app.register_blueprint(sprint_bp)
 
     logger.debug("Registering sprint details blueprint with prefix /api/sprint-details")
     app.register_blueprint(sprint_details_bp)

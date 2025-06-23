@@ -11,6 +11,8 @@ import json
 from datetime import datetime
 import logging
 import jwt
+import requests
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -91,20 +93,33 @@ def chat(current_user):
     """Handle chat requests and process intents."""
     try:
         data = request.get_json()
-        logger.debug(f"Received chat request data: {data}")
-        
-        ai_engine = data.get("aiEngine", "").lower()  # Convert to lowercase
+        ai_engine = data.get("aiEngine")
         project_key = data.get("projectKey")
         board_id = data.get("boardId")
-        user_message = data.get("userMessage")
-        user_id = str(current_user.id)
+        user_message = data.get("userMessage", "").strip().lower()
 
-        if not all([ai_engine, project_key, board_id, user_message]):
-            logger.error("Missing required fields in request")
+        if not ai_engine or not project_key or not board_id or not user_message:
             return jsonify({
                 "error": "Missing required fields",
-                "message": "Please provide aiEngine, projectKey, boardId, and userMessage"
+                "message": "aiEngine, projectKey, boardId, and userMessage are required."
             }), 400
+
+        # 1. Check for specific member status query
+        member_status_match = re.search(r"status of ([a-zA-Z .,'-]+)", user_message)
+        if member_status_match:
+            # Extract member name(s)
+            names_str = member_status_match.group(1)
+            # Support multiple names separated by 'or', 'and', ','
+            names = re.split(r"\s*or\s*|\s*and\s*|,", names_str)
+            names = [n.strip().title() for n in names if n.strip()]
+            return _handle_specific_member_status(current_user, project_key, board_id, names)
+
+        # 2. Sprint status intent
+        if any(kw in user_message for kw in ["sprint status", "status of the sprint", "current sprint status"]):
+            return _handle_sprint_status(current_user, project_key, board_id)
+        # 3. Individual status intent
+        if any(kw in user_message for kw in ["individual status", "team status", "member status", "who is doing what"]):
+            return _handle_individual_status(current_user, project_key, board_id)
 
         # Get MongoDB client
         db = get_mongo_client().scrum_master_db
@@ -112,21 +127,21 @@ def chat(current_user):
         # Get the most recent AI configuration for the user
         ai_config = db.user_configs.find_one(
             {
-                "userId": user_id,
+                "userId": str(current_user.id),
                 "aiEngine": ai_engine
             },
             sort=[("updated_at", -1)]
         )
 
         if not ai_config:
-            logger.error(f"No AI configuration found for user {user_id} and engine {ai_engine}")
+            logger.error(f"No AI configuration found for user {str(current_user.id)} and engine {ai_engine}")
             return jsonify({
                 "error": "AI engine not configured",
                 "message": f"Please configure {ai_engine} in your settings first"
             }), 400
 
         if "aiCredentials" not in ai_config:
-            logger.error(f"Missing AI credentials for user {user_id} and engine {ai_engine}")
+            logger.error(f"Missing AI credentials for user {str(current_user.id)} and engine {ai_engine}")
             return jsonify({
                 "error": "AI credentials missing",
                 "message": f"Please update your {ai_engine} configuration with valid credentials"
@@ -134,7 +149,7 @@ def chat(current_user):
 
         # Get existing conversation or create new one
         convo = db.conversations.find_one({
-            "userId": user_id,
+            "userId": str(current_user.id),
             "projectKey": project_key,
             "boardId": board_id
         })
@@ -197,7 +212,7 @@ def chat(current_user):
             if not convo:
                 # Create new conversation
                 db.conversations.insert_one({
-                    "userId": user_id,
+                    "userId": str(current_user.id),
                     "projectKey": project_key,
                     "boardId": board_id,
                     "messages": [
@@ -219,7 +234,7 @@ def chat(current_user):
                 # Update existing conversation - push each message individually
                 db.conversations.update_one(
                     {
-                        "userId": user_id,
+                        "userId": str(current_user.id),
                         "projectKey": project_key,
                         "boardId": board_id
                     },
@@ -256,8 +271,171 @@ def chat(current_user):
             }), 500
 
     except Exception as e:
-        logger.error(f"Unexpected error in chat endpoint: {str(e)}", exc_info=True)
+        logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
         return jsonify({
             "error": "Internal server error",
-            "message": "An unexpected error occurred. Please try again."
-        }), 500 
+            "message": str(e)
+        }), 500
+
+def _handle_sprint_status(current_user, project_key, board_id):
+    try:
+        # Get active Jira configuration
+        jira_config = JiraConfig.objects(user=current_user, is_active=True).first()
+        if not jira_config:
+            return jsonify({
+                "response": "Jira is not configured for your account. Please configure Jira first."
+            })
+        jira_helper = JiraHelper(
+            domain=jira_config.domain,
+            email=jira_config.email,
+            api_token=jira_config.api_token
+        )
+        active_sprint = jira_helper.get_active_sprint(board_id)
+        if not active_sprint:
+            return jsonify({"response": "No active sprint found for the selected board."})
+        sprint_id = active_sprint["id"]
+        sprint_details = jira_helper.get_sprint_details(sprint_id)
+        issues = jira_helper.get_sprint_issues(sprint_id)
+        # Compose bullet-point summary
+        summary = _format_sprint_status(sprint_details, issues)
+        return jsonify({"response": summary})
+    except Exception as e:
+        logger.error(f"Error in _handle_sprint_status: {str(e)}", exc_info=True)
+        return jsonify({"response": f"Error fetching sprint status: {str(e)}"})
+
+def _handle_individual_status(current_user, project_key, board_id):
+    try:
+        # Get active Jira configuration
+        jira_config = JiraConfig.objects(user=current_user, is_active=True).first()
+        if not jira_config:
+            return jsonify({
+                "response": "Jira is not configured for your account. Please configure Jira first."
+            })
+        jira_helper = JiraHelper(
+            domain=jira_config.domain,
+            email=jira_config.email,
+            api_token=jira_config.api_token
+        )
+        active_sprint = jira_helper.get_active_sprint(board_id)
+        if not active_sprint:
+            return jsonify({"response": "No active sprint found for the selected board."})
+        sprint_id = active_sprint["id"]
+        issues = jira_helper.get_sprint_issues(sprint_id)
+        # Compose bullet-point summary
+        summary = _format_individual_status(issues)
+        return jsonify({"response": summary})
+    except Exception as e:
+        logger.error(f"Error in _handle_individual_status: {str(e)}", exc_info=True)
+        return jsonify({"response": f"Error fetching individual status: {str(e)}"})
+
+def _format_sprint_status(sprint_details, issues):
+    # Calculate story progress
+    to_do = in_progress = done = total = 0
+    for issue in issues:
+        if issue.get("fields", {}).get("issuetype", {}).get("name", "").lower() == "story":
+            status = issue.get("fields", {}).get("status", {}).get("name", "").lower()
+            total += 1
+            if status in ["done", "completed"]:
+                done += 1
+            elif status in ["in progress", "inprogress"]:
+                in_progress += 1
+            else:
+                to_do += 1
+    to_do_pct = (to_do / total * 100) if total else 0
+    in_progress_pct = (in_progress / total * 100) if total else 0
+    done_pct = (done / total * 100) if total else 0
+    # Velocity (story points)
+    planned_points = completed_points = 0
+    for issue in issues:
+        if issue.get("fields", {}).get("issuetype", {}).get("name", "").lower() == "story":
+            points = issue.get("fields", {}).get("customfield_10016", 0) or 0
+            planned_points += points
+            status = issue.get("fields", {}).get("status", {}).get("name", "").lower()
+            if status in ["done", "completed"]:
+                completed_points += points
+    completion_rate = (completed_points / planned_points * 100) if planned_points else 0
+    # Dates
+    start = sprint_details.get("startDate", "N/A")
+    end = sprint_details.get("endDate", "N/A")
+    goal = sprint_details.get("goal", "N/A")
+    name = sprint_details.get("name", "N/A")
+    state = sprint_details.get("state", "N/A")
+    summary = f"""
+• Sprint: {name} ({state})
+• Start Date: {start}
+• End Date: {end}
+• Goal: {goal}
+• Story Progress:
+  - To Do: {to_do} ({to_do_pct:.1f}%)
+  - In Progress: {in_progress} ({in_progress_pct:.1f}%)
+  - Done: {done} ({done_pct:.1f}%)
+  - Total Stories: {total}
+• Velocity: {planned_points} planned points, {completed_points} completed points ({completion_rate:.1f}% completion)
+"""
+    return summary.strip()
+
+def _format_individual_status(issues):
+    # Group by assignee
+    from collections import defaultdict
+    status_map = defaultdict(list)
+    for issue in issues:
+        fields = issue.get("fields", {})
+        assignee = fields.get("assignee", {}).get("displayName", "Unassigned")
+        ticket_id = issue.get("key", "")
+        title = fields.get("summary", "")
+        status = fields.get("status", {}).get("name", "Unknown")
+        issue_type = fields.get("issuetype", {}).get("name", "Unknown")
+        priority = fields.get("priority", {}).get("name", "Not set")
+        status_map[assignee].append(f"- {ticket_id}: {title} ({status}, {issue_type}, {priority})")
+    if not status_map:
+        return "No individual status found for this sprint."
+    lines = []
+    for assignee, tickets in status_map.items():
+        lines.append(f"• {assignee}:")
+        lines.extend(tickets)
+    return "\n".join(lines)
+
+def _handle_specific_member_status(current_user, project_key, board_id, member_names):
+    try:
+        jira_config = JiraConfig.objects(user=current_user, is_active=True).first()
+        if not jira_config:
+            return jsonify({
+                "response": "Jira is not configured for your account. Please configure Jira first."
+            })
+        jira_helper = JiraHelper(
+            domain=jira_config.domain,
+            email=jira_config.email,
+            api_token=jira_config.api_token
+        )
+        active_sprint = jira_helper.get_active_sprint(board_id)
+        if not active_sprint:
+            return jsonify({"response": "No active sprint found for the selected board."})
+        sprint_id = active_sprint["id"]
+        issues = jira_helper.get_sprint_issues(sprint_id)
+        # Group by assignee
+        from collections import defaultdict
+        status_map = defaultdict(list)
+        for issue in issues:
+            fields = issue.get("fields", {})
+            assignee = fields.get("assignee", {}).get("displayName", "Unassigned")
+            ticket_id = issue.get("key", "")
+            title = fields.get("summary", "")
+            status = fields.get("status", {}).get("name", "Unknown")
+            issue_type = fields.get("issuetype", {}).get("name", "Unknown")
+            priority = fields.get("priority", {}).get("name", "Not set")
+            status_map[assignee].append(f"- {ticket_id}: {title} ({status}, {issue_type}, {priority})")
+        # Filter for requested member(s)
+        found = False
+        lines = []
+        for name in member_names:
+            for assignee in status_map:
+                if name.lower() == assignee.lower():
+                    found = True
+                    lines.append(f"• {assignee}:")
+                    lines.extend(status_map[assignee])
+        if not found:
+            return jsonify({"response": f"No status found for {', '.join(member_names)} in this sprint."})
+        return jsonify({"response": "\n".join(lines)})
+    except Exception as e:
+        logger.error(f"Error in _handle_specific_member_status: {str(e)}", exc_info=True)
+        return jsonify({"response": f"Error fetching status for {', '.join(member_names)}: {str(e)}"}) 
